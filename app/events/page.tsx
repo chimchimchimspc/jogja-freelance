@@ -1,39 +1,74 @@
 "use client";
-import { useState, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Header from "../components/layout/Header";
 import Footer from "../components/layout/Footer";
 import EventCard from "../components/events/EventCard";
 import CheckInModal from "../components/events/CheckInModal";
 import Toast from "../components/ui/Toast";
-import { Calendar, MapPin, Filter, X } from "lucide-react";
-import { MOCK_EVENTS, EVENT_TYPES, type Event, type EventType } from "../data/events";
+import { Calendar, Filter, X, Loader2 } from "lucide-react";
+import type { Event as LocalEvent, EventType } from "../data/events";
+import { EVENT_TYPES } from "../data/events";
 import FadeInSection from "../components/ui/FadeInSection";
+import { eventsApi, type ApiEvent } from "../lib/events.api";
 
-type FilterType = "semua" | "upcoming" | "past";
+type FilterType = "upcoming" | "past";
+
+// Adapter: ApiEvent → local Event shape
+function adaptEvent(e: ApiEvent): LocalEvent {
+  return {
+    id: e.id,
+    title: e.title,
+    description: e.description,
+    type: e.type,
+    date: e.event_date,
+    time: e.event_time,
+    duration: e.duration_minutes,
+    location: e.location_name,
+    latitude: e.latitude ?? 0,
+    longitude: e.longitude ?? 0,
+    organizerId: "",
+    organizerName: e.organizer_name,
+    image: e.image_url,
+    attendeeLimit: e.attendee_limit,
+    attendeeCount: e.attendee_count,
+    checkInCode: e.check_in_code ?? "",
+    skills: e.skills ?? [],
+    isFree: e.is_free,
+    price: e.price,
+    registrationUrl: e.registration_url,
+  };
+}
 
 export default function EventsPage() {
   const [filterType, setFilterType] = useState<FilterType>("upcoming");
   const [selectedCategory, setSelectedCategory] = useState<EventType | "semua">("semua");
-  const [checkInEvent, setCheckInEvent] = useState<Event | null>(null);
+  const [checkInEvent, setCheckInEvent] = useState<LocalEvent | null>(null);
   const [toast, setToast] = useState<string | null>(null);
 
+  const [events, setEvents]         = useState<LocalEvent[]>([]);
+  const [loading, setLoading]       = useState(true);
+  const [error, setError]           = useState<string | null>(null);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await eventsApi.list({ upcoming: filterType === "upcoming" });
+        setEvents(res.data.map(adaptEvent));
+      } catch (e: unknown) {
+        setError(e instanceof Error ? e.message : "Gagal memuat events");
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [filterType]);
+
   const filtered = useMemo(() => {
-    const today = new Date().toISOString().split("T")[0];
-
-    let result = MOCK_EVENTS;
-
-    if (filterType === "upcoming") {
-      result = result.filter((e) => e.date >= today);
-    } else if (filterType === "past") {
-      result = result.filter((e) => e.date < today);
-    }
-
+    let result = events;
     if (selectedCategory !== "semua") {
       result = result.filter((e) => e.type === selectedCategory);
     }
-
     return result.sort((a, b) => a.date.localeCompare(b.date));
-  }, [filterType, selectedCategory]);
+  }, [events, selectedCategory]);
 
   const handleCheckInSuccess = () => {
     setToast("✓ Check-in berhasil! Badge pending verifikasi admin.");
@@ -43,7 +78,6 @@ export default function EventsPage() {
     <>
       <Header />
       <main className="flex-1 bg-[#F1F1F1]">
-        {/* Page header */}
         <div className="bg-white text-[#1E1B2E] py-10">
           <div className="max-w-7xl mx-auto px-4">
             <div className="flex items-center gap-3 mb-2">
@@ -55,58 +89,49 @@ export default function EventsPage() {
         </div>
 
         <div className="max-w-7xl mx-auto px-4 py-6">
-          {/* Filters */}
           <div className="flex flex-col sm:flex-row gap-3 mb-6">
-            {/* Filter tabs */}
             <div className="flex gap-2 bg-white border border-[#E7E7E7] rounded-lg p-1">
               {(["upcoming", "past"] as const).map((f) => (
-                <button
-                  key={f}
-                  onClick={() => setFilterType(f)}
+                <button key={f} onClick={() => setFilterType(f)}
                   className={`px-4 py-2 text-sm font-semibold rounded transition-colors ${
-                    filterType === f
-                      ? "bg-[#D64545] text-white"
-                      : "text-[#565A5C] hover:bg-[#F1F1F1]"
-                  }`}
-                >
+                    filterType === f ? "bg-[#D64545] text-white" : "text-[#565A5C] hover:bg-[#F1F1F1]"
+                  }`}>
                   {f === "upcoming" ? "Mendatang" : "Selesai"}
                 </button>
               ))}
             </div>
 
-            {/* Category filter */}
             <div className="flex gap-2 flex-wrap">
-              <button
-                onClick={() => setSelectedCategory("semua")}
+              <button onClick={() => setSelectedCategory("semua")}
                 className={`text-xs px-3 py-2 rounded-full font-semibold transition-colors ${
                   selectedCategory === "semua"
                     ? "bg-[#D64545] text-white"
                     : "bg-white border border-[#CCCCCC] text-[#565A5C] hover:border-[#D64545]"
-                }`}
-              >
+                }`}>
                 Semua
               </button>
-              {(Object.keys(EVENT_TYPES) as EventType[]).map((type) => {
-                const icon = EVENT_TYPES[type].icon;
-                return (
-                  <button
-                    key={type}
-                    onClick={() => setSelectedCategory(type)}
-                    className={`text-xs px-3 py-2 rounded-full font-semibold transition-colors flex items-center gap-1 ${
-                      selectedCategory === type
-                        ? "bg-[#D64545] text-white"
-                        : "bg-white border border-[#CCCCCC] text-[#565A5C] hover:border-[#D64545]"
-                    }`}
-                  >
-                    <span>{icon}</span> {EVENT_TYPES[type].label}
-                  </button>
-                );
-              })}
+              {(Object.keys(EVENT_TYPES) as EventType[]).map((type) => (
+                <button key={type} onClick={() => setSelectedCategory(type)}
+                  className={`text-xs px-3 py-2 rounded-full font-semibold transition-colors flex items-center gap-1 ${
+                    selectedCategory === type
+                      ? "bg-[#D64545] text-white"
+                      : "bg-white border border-[#CCCCCC] text-[#565A5C] hover:border-[#D64545]"
+                  }`}>
+                  <span>{EVENT_TYPES[type].icon}</span> {EVENT_TYPES[type].label}
+                </button>
+              ))}
             </div>
           </div>
 
-          {/* Results */}
-          {filtered.length === 0 ? (
+          {loading ? (
+            <div className="flex justify-center py-20">
+              <Loader2 className="w-8 h-8 animate-spin text-[#D64545]" />
+            </div>
+          ) : error ? (
+            <div className="bg-white border border-[#E7E7E7] rounded-lg p-16 text-center">
+              <p className="text-[#DC2C1E]">{error}</p>
+            </div>
+          ) : filtered.length === 0 ? (
             <div className="bg-white border border-[#E7E7E7] rounded-lg p-16 text-center">
               <div className="text-5xl mb-4">📭</div>
               <h3 className="text-lg font-bold text-[#232F3E] mb-2">Tidak ada event</h3>

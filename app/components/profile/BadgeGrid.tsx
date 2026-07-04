@@ -33,7 +33,7 @@ export default function BadgeGrid({ earnedBadges }: BadgeGridProps) {
           const style = getRarityStyle(badge.name);
 
           return (
-            <div key={badge.name} className="group">
+            <div key={badge.name} className="group relative">
               <div
                 className={clsx(
                   "relative w-full aspect-square rounded-lg border-2 flex items-center justify-center text-3xl transition-all duration-200 cursor-pointer",

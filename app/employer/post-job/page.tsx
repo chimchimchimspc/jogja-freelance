@@ -5,6 +5,8 @@ import Footer from "../../components/layout/Footer";
 import Toast from "../../components/ui/Toast";
 import { Briefcase, CheckCircle, ChevronLeft, X } from "lucide-react";
 import Link from "next/link";
+import { jobsApi } from "../../lib/jobs.api";
+import { useAuth } from "../../context/AuthContext";
 
 const CATEGORIES = [
   "Web Development", "Mobile Development", "UI/UX Design",
@@ -45,9 +47,11 @@ const INIT: FormData = {
 };
 
 export default function PostJobPage() {
+  const { user } = useAuth();
   const [form, setForm]         = useState<FormData>(INIT);
   const [skillInput, setSkillInput] = useState("");
   const [submitted, setSubmitted]   = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [toast, setToast]           = useState<string | null>(null);
   const [errors, setErrors]         = useState<Partial<Record<keyof FormData, string>>>({});
 
@@ -78,11 +82,32 @@ export default function PostJobPage() {
     return Object.keys(e).length === 0;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validate()) return;
-    setSubmitted(true);
-    setToast("Lowongan berhasil dipasang! Menunggu review admin (1–2 hari kerja).");
+    setSubmitting(true);
+    try {
+      await jobsApi.create({
+        title: form.title,
+        category: form.category,
+        description: form.description,
+        budget_min: +form.budgetMin,
+        budget_max: +form.budgetMax,
+        budget_type: "fixed",
+        deadline_days: +form.deadlineDays,
+        location_type: form.locationType,
+        experience_level: form.experienceLevel,
+        contact_email: user?.email,
+        skills: form.skills,
+      });
+      setSubmitted(true);
+      setToast("Lowongan berhasil dipasang! Menunggu review admin (1–2 hari kerja).");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Gagal memasang lowongan. Coba lagi.";
+      setToast(msg);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const fmtBudget = (val: string) =>
@@ -391,9 +416,10 @@ export default function PostJobPage() {
               </Link>
               <button
                 type="submit"
-                className="px-8 py-2.5 bg-[#D64545] hover:bg-[#C23B3B] text-white rounded-lg font-bold text-sm transition-colors"
+                disabled={submitting}
+                className="px-8 py-2.5 bg-[#D64545] hover:bg-[#C23B3B] text-white rounded-lg font-bold text-sm transition-colors disabled:opacity-60"
               >
-                Pasang Lowongan
+                {submitting ? "Memasang..." : "Pasang Lowongan"}
               </button>
             </div>
           </form>

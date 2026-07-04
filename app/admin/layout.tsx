@@ -1,5 +1,9 @@
-import { LayoutDashboard, Briefcase, Users, Calendar, Award, BarChart3, Settings, MapPin, LogOut } from "lucide-react";
+"use client";
+import { LayoutDashboard, Briefcase, Users, Calendar, Award, BarChart3, Settings, MapPin, LogOut, Loader2 } from "lucide-react";
 import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect } from "react";
+import { useAuth } from "../context/AuthContext";
 
 const NAV = [
   { href: "/admin",          icon: LayoutDashboard, label: "Dashboard" },
@@ -12,6 +16,24 @@ const NAV = [
 ];
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
+  const { user, isLoading, logout } = useAuth();
+  const router = useRouter();
+  const pathname = usePathname();
+
+  useEffect(() => {
+    if (!isLoading && (!user || user.role !== "admin")) {
+      router.replace("/auth/login?redirect=/admin");
+    }
+  }, [user, isLoading, router]);
+
+  if (isLoading || !user || user.role !== "admin") {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#F1F1F1]">
+        <Loader2 className="w-8 h-8 animate-spin text-[#D64545]" />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen flex flex-col bg-[#F1F1F1]">
       {/* Admin top bar */}
@@ -24,10 +46,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           </span>
         </div>
         <div className="flex items-center gap-4">
-          <span className="text-sm text-[#6B6880]">admin@jogjafrelance.id</span>
-          <Link href="/" className="flex items-center gap-1 text-sm text-[#6B6880] hover:text-[#D64545]">
+          <span className="text-sm text-[#6B6880]">{user.email}</span>
+          <button
+            onClick={() => { logout(); router.push("/"); }}
+            className="flex items-center gap-1 text-sm text-[#6B6880] hover:text-[#D64545]"
+          >
             <LogOut className="w-4 h-4" /> Keluar
-          </Link>
+          </button>
         </div>
       </header>
 
@@ -35,16 +60,21 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         {/* Sidebar */}
         <aside className="w-56 bg-[#232F3E] text-white flex-shrink-0 hidden md:flex flex-col sticky top-14 h-[calc(100vh-3.5rem)]">
           <nav className="flex-1 py-4">
-            {NAV.map(({ href, icon: Icon, label }) => (
-              <Link
-                key={href}
-                href={href}
-                className="flex items-center gap-3 px-5 py-3 text-sm text-[#6B6880] hover:bg-white/10 hover:text-white transition-colors"
-              >
-                <Icon className="w-4 h-4" />
-                {label}
-              </Link>
-            ))}
+            {NAV.map(({ href, icon: Icon, label }) => {
+              const isActive = pathname === href || (href !== "/admin" && pathname.startsWith(href + "/"));
+              return (
+                <Link
+                  key={href}
+                  href={href}
+                  className={`flex items-center gap-3 px-5 py-3 text-sm transition-colors ${
+                    isActive ? "bg-white/10 text-white" : "text-[#6B6880] hover:bg-white/10 hover:text-white"
+                  }`}
+                >
+                  <Icon className="w-4 h-4" />
+                  {label}
+                </Link>
+              );
+            })}
           </nav>
           <div className="p-4 border-t border-white/10">
             <Link href="/" className="text-xs text-white/40 hover:text-[#6B6880] transition-colors">

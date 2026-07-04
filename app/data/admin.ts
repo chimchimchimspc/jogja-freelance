@@ -13,6 +13,7 @@ export interface AdminAnalytics {
   activeJobs: number;
   pendingJobs: number;
   totalEvents: number;
+  pendingEvents: number;
   pendingBadgeVerifications: number;
   jobApplicationsToday: number;
   newUsersThisWeek: number;
@@ -71,6 +72,7 @@ export const MOCK_ANALYTICS: AdminAnalytics = {
   activeJobs: 8,
   pendingJobs: 4,
   totalEvents: 6,
+  pendingEvents: 2,
   pendingBadgeVerifications: 7,
   jobApplicationsToday: 12,
   newUsersThisWeek: 38,

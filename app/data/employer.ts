@@ -202,6 +202,59 @@ export const MOCK_APPLICANTS: Applicant[] = [
   },
 ];
 
+export interface EmployerEvent {
+  id: string;
+  title: string;
+  type: "workshop" | "meetup" | "coffee_chat" | "networking";
+  eventDate: string;
+  attendeeCount: number;
+  attendeeLimit: number;
+}
+
+export interface EventRegistrant {
+  id: string;
+  eventId: string;
+  name: string;
+  level: "Bronze" | "Silver" | "Gold" | "Platinum";
+  registeredAt: string;
+  checkedIn: boolean;
+}
+
+export const MOCK_EMPLOYER_EVENTS: EmployerEvent[] = [
+  {
+    id: "ee1",
+    title: "Workshop: Membangun Portfolio Freelance yang Menjual",
+    type: "workshop",
+    eventDate: "18 Jun 2026",
+    attendeeCount: 3,
+    attendeeLimit: 30,
+  },
+  {
+    id: "ee2",
+    title: "Coffee Chat: Ngobrol Santai Bareng Freelancer Jogja",
+    type: "coffee_chat",
+    eventDate: "25 Jun 2026",
+    attendeeCount: 2,
+    attendeeLimit: 15,
+  },
+];
+
+export const MOCK_EVENT_REGISTRANTS: EventRegistrant[] = [
+  { id: "r1", eventId: "ee1", name: "Putri Anjani",  level: "Silver", registeredAt: "12 Jun 2026", checkedIn: false },
+  { id: "r2", eventId: "ee1", name: "Bima Sakti",     level: "Bronze", registeredAt: "13 Jun 2026", checkedIn: false },
+  { id: "r3", eventId: "ee1", name: "Sinta Dewi",     level: "Gold",   registeredAt: "14 Jun 2026", checkedIn: true  },
+  { id: "r4", eventId: "ee2", name: "Rizky Pratama",  level: "Silver", registeredAt: "15 Jun 2026", checkedIn: false },
+  { id: "r5", eventId: "ee2", name: "Aulia Rahma",    level: "Gold",   registeredAt: "16 Jun 2026", checkedIn: false },
+];
+
+export function getRegistrantsByEvent(eventId: string): EventRegistrant[] {
+  return MOCK_EVENT_REGISTRANTS.filter((r) => r.eventId === eventId);
+}
+
+export function getEmployerEventById(id: string): EmployerEvent | undefined {
+  return MOCK_EMPLOYER_EVENTS.find((e) => e.id === id);
+}
+
 export function getApplicantsByJob(jobId: string): Applicant[] {
   return MOCK_APPLICANTS.filter((a) => a.jobId === jobId);
 }

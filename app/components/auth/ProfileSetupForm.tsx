@@ -5,6 +5,7 @@ import Button from "../ui/Button";
 import Toast from "../ui/Toast";
 import { Upload } from "lucide-react";
 import Link from "next/link";
+import { profileApi } from "../../lib/profile.api";
 
 interface FormData {
   profilePicture: File | null;
@@ -87,11 +88,16 @@ export default function ProfileSetupForm() {
 
     setLoading(true);
     try {
-      await new Promise((r) => setTimeout(r, 1500));
+      await profileApi.update({
+        bio: form.bio,
+        portfolio_url: form.portfolioUrl || undefined,
+        skills: form.skills,
+      });
       setToast({ message: "Profil berhasil dibuat! Mulai panduan Anda.", type: "success" });
       setTimeout(() => (window.location.href = "/passport"), 2000);
     } catch (err) {
-      setToast({ message: "Terjadi kesalahan. Coba lagi.", type: "error" });
+      const msg = err instanceof Error ? err.message : "Terjadi kesalahan. Coba lagi.";
+      setToast({ message: msg, type: "error" });
     } finally {
       setLoading(false);
     }

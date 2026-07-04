@@ -1,7 +1,10 @@
+"use client";
 import { Clock, DollarSign, ArrowRight } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import Badge from "../ui/Badge";
 import Button from "../ui/Button";
+import { useAuth } from "../../context/AuthContext";
 
 const SAMPLE_JOBS = [
   {
@@ -73,6 +76,17 @@ const SAMPLE_JOBS = [
 ];
 
 export default function JobPreviewSection() {
+  const { user } = useAuth();
+  const router = useRouter();
+
+  function handleProtected(path: string) {
+    if (!user) {
+      router.push(`/auth/login?redirect=${encodeURIComponent(path)}`);
+    } else {
+      router.push(path);
+    }
+  }
+
   return (
     <>
       <style>{`
@@ -141,12 +155,22 @@ export default function JobPreviewSection() {
               </div>
 
               <div className="flex gap-2 mt-auto">
-                <Link href={`/jobs/${job.id}`} className="flex-1">
-                  <Button variant="primary" size="sm" fullWidth>Lamar</Button>
-                </Link>
-                <Link href={`/jobs/${job.id}`} className="flex-1">
-                  <Button variant="secondary" size="sm" fullWidth>Detail</Button>
-                </Link>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  fullWidth
+                  onClick={() => handleProtected(`/jobs/${job.id}`)}
+                >
+                  Lamar
+                </Button>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  fullWidth
+                  onClick={() => handleProtected(`/jobs/${job.id}`)}
+                >
+                  Detail
+                </Button>
               </div>
             </div>
             ))}

@@ -1,79 +1,102 @@
 "use client";
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { Search, Bell, Menu, X, LogOut } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { clsx } from "clsx";
-import { useAuth } from "../../context/AuthContext";
+import { useAuth, type User } from "../../context/AuthContext";
+import { notificationsApi, type Notification } from "../../lib/notifications.api";
 
-const navLinks = [
+const GUEST_NAV_LINKS = [
   { href: "/jobs",     label: "Lowongan" },
   { href: "/passport", label: "Panduan" },
   { href: "/events",   label: "Events" },
   { href: "/employer", label: "Employer" },
 ];
 
-const MOCK_NOTIFICATIONS = [
-  {
-    id: "1",
-    type: "application",
-    message: "Lamaran Anda untuk React Frontend Developer telah direview",
-    time: "2 jam lalu",
-    read: false,
-  },
-  {
-    id: "2",
-    type: "accepted",
-    message: "Selamat! Lamaran Anda untuk Content Writer diterima",
-    time: "5 jam lalu",
-    read: false,
-  },
-  {
-    id: "3",
-    type: "new_job",
-    message: "Ada lowongan baru: Flutter Developer - Rp 7.5jt",
-    time: "1 hari lalu",
-    read: true,
-  },
-  {
-    id: "4",
-    type: "event",
-    message: "Workshop: Advanced React Patterns - Besok jam 7 malam",
-    time: "2 hari lalu",
-    read: true,
-  },
-  {
-    id: "5",
-    type: "badge",
-    message: "Anda mendapat badge baru: First Application",
-    time: "3 hari lalu",
-    read: true,
-  },
+const FREELANCER_NAV_LINKS = [
+  { href: "/jobs",     label: "Lowongan" },
+  { href: "/passport", label: "Panduan" },
+  { href: "/events",   label: "Events" },
 ];
+
+const RECRUITER_NAV_LINKS = [
+  { href: "/employer",            label: "Lowongan" },
+  { href: "/employer/applicants", label: "Pendaftar" },
+  { href: "/events",              label: "Events" },
+];
+
+const ADMIN_NAV_LINKS = [
+  { href: "/admin", label: "Admin Panel" },
+];
+
+function getNavLinks(role?: User["role"]) {
+  if (role === "admin") return ADMIN_NAV_LINKS;
+  if (role === "employer" || role === "event_organizer") return RECRUITER_NAV_LINKS;
+  if (!role) return GUEST_NAV_LINKS;
+  return FREELANCER_NAV_LINKS;
+}
+
+function timeAgo(dateStr: string): string {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return "Baru saja";
+  if (mins < 60) return `${mins} menit lalu`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours} jam lalu`;
+  const days = Math.floor(hours / 24);
+  return `${days} hari lalu`;
+}
 
 export default function Header() {
   const router = useRouter();
   const { user, logout } = useAuth();
   const [menuOpen,   setMenuOpen]   = useState(false);
-  const [searchOpen, setSearchOpen] = useState(() => {
-    if (typeof window !== "undefined") {
-      return localStorage.getItem("searchOpen") === "true";
-    }
-    return false;
-  });
+  const [searchOpen, setSearchOpen] = useState(false);
   const [notifOpen,  setNotifOpen]  = useState(false);
   const [notifClosing, setNotifClosing] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
   const [search,     setSearch]     = useState("");
+  const [notifications, setNotifications] = useState<Notification[]>([]);
   const pathname  = usePathname();
   const inputRef  = useRef<HTMLInputElement>(null);
   const notifRef  = useRef<HTMLDivElement>(null);
   const accountRef = useRef<HTMLDivElement>(null);
+  const navLinks = getNavLinks(user?.role);
+
+  const fetchNotifications = useCallback(async () => {
+    if (!user) return;
+    try {
+      const res = await notificationsApi.getAll();
+      setNotifications(res.data.rows);
+    } catch {
+      setNotifications([]);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    fetchNotifications();
+  }, [fetchNotifications]);
+
+  const handleMarkRead = async (id: string) => {
+    try {
+      await notificationsApi.markRead(id);
+      setNotifications((prev) =>
+        prev.map((n) => (n.id === id ? { ...n, is_read: true } : n))
+      );
+    } catch {}
+  };
+
+  const handleMarkAllRead = async () => {
+    try {
+      await notificationsApi.markAllRead();
+      setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
+    } catch {}
+  };
 
   useEffect(() => {
     if (searchOpen) inputRef.current?.focus();
-    localStorage.setItem("searchOpen", String(searchOpen));
   }, [searchOpen]);
 
   useEffect(() => {
@@ -152,7 +175,6 @@ export default function Header() {
               if (searchOpen) {
                 setSearchOpen(false);
                 setSearch("");
-                localStorage.removeItem("searchOpen");
               } else {
                 setSearchOpen(true);
               }
@@ -169,6 +191,7 @@ export default function Header() {
 
         {/* Actions */}
         <div className="flex items-center gap-2 flex-shrink-0">
+          {user && (
           <div className="relative" ref={notifRef}>
             <button
               onClick={() => setNotifOpen((v) => !v)}
@@ -176,7 +199,7 @@ export default function Header() {
               aria-label="Notifikasi"
             >
               <Bell className="w-5 h-5 text-[#1E1B2E]" />
-              {MOCK_NOTIFICATIONS.some((n) => !n.read) && (
+              {notifications.some((n) => !n.is_read) && (
                 <span className="absolute top-0.5 right-0.5 w-2 h-2 bg-[#D64545] rounded-full" />
               )}
             </button>
@@ -208,36 +231,48 @@ export default function Header() {
                 </div>
 
                 <div className="max-h-96 overflow-y-auto">
-                  {MOCK_NOTIFICATIONS.map((notif) => (
-                    <div
-                      key={notif.id}
-                      className={`p-4 border-b border-[#E7E7E7] hover:bg-[#F8F8F8] transition-colors cursor-pointer ${
-                        !notif.read ? "bg-blue-50" : ""
-                      }`}
-                    >
-                      <div className="flex items-start gap-3">
-                        <div
-                          className={`w-2 h-2 rounded-full flex-shrink-0 mt-2 ${
-                            !notif.read ? "bg-[#D64545]" : "bg-transparent"
-                          }`}
-                        />
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm text-[#232F3E] line-clamp-2">{notif.message}</p>
-                          <p className="text-xs text-[#565A5C] mt-1">{notif.time}</p>
+                  {notifications.length === 0 ? (
+                    <div className="p-8 text-center text-sm text-[#565A5C]">
+                      Belum ada notifikasi
+                    </div>
+                  ) : (
+                    notifications.map((notif) => (
+                      <div
+                        key={notif.id}
+                        onClick={() => !notif.is_read && handleMarkRead(notif.id)}
+                        className={`p-4 border-b border-[#E7E7E7] hover:bg-[#F8F8F8] transition-colors cursor-pointer ${
+                          !notif.is_read ? "bg-blue-50" : ""
+                        }`}
+                      >
+                        <div className="flex items-start gap-3">
+                          <div
+                            className={`w-2 h-2 rounded-full flex-shrink-0 mt-2 ${
+                              !notif.is_read ? "bg-[#D64545]" : "bg-transparent"
+                            }`}
+                          />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-semibold text-[#D64545] mb-0.5">{notif.title}</p>
+                            <p className="text-sm text-[#232F3E] line-clamp-2">{notif.message}</p>
+                            <p className="text-xs text-[#565A5C] mt-1">{timeAgo(notif.created_at)}</p>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    ))
+                  )}
                 </div>
 
                 <div className="p-3 border-t border-[#E7E7E7] bg-[#F8F8F8]">
-                  <button className="w-full text-center text-sm text-[#DC3545] font-semibold hover:text-[#C23B3B] py-2">
-                    Lihat semua notifikasi
+                  <button
+                    onClick={handleMarkAllRead}
+                    className="w-full text-center text-sm text-[#DC3545] font-semibold hover:text-[#C23B3B] py-2"
+                  >
+                    Tandai semua sudah dibaca
                   </button>
                 </div>
               </div>
             )}
           </div>
+          )}
 
           {/* Account menu */}
           {user ? (
@@ -270,6 +305,24 @@ export default function Header() {
                     >
                       Profil Saya
                     </Link>
+                    {(user.role === "employer" || user.role === "event_organizer") && (
+                      <Link
+                        href="/employer"
+                        className="block px-4 py-2 text-sm text-[#232F3E] hover:bg-[#F8F8F8] rounded transition-colors"
+                        onClick={() => setAccountOpen(false)}
+                      >
+                        Dashboard Employer
+                      </Link>
+                    )}
+                    {user.role === "admin" && (
+                      <Link
+                        href="/admin"
+                        className="block px-4 py-2 text-sm text-[#232F3E] hover:bg-[#F8F8F8] rounded transition-colors"
+                        onClick={() => setAccountOpen(false)}
+                      >
+                        Admin Panel
+                      </Link>
+                    )}
                     <button
                       onClick={() => {
                         logout();

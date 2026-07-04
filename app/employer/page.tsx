@@ -8,7 +8,7 @@ import {
 } from "../data/employer";
 import {
   Briefcase, Users, CheckCircle, Clock, Plus,
-  ChevronRight, MapPin, Building2, TrendingUp,
+  ChevronRight, MapPin, Building2, TrendingUp, CalendarDays,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -62,12 +62,20 @@ export default function EmployerDashboard() {
                 </p>
               </div>
             </div>
-            <Link
-              href="/employer/post-job"
-              className="flex items-center gap-2 bg-[#D64545] hover:bg-[#C23B3B] text-white font-semibold text-sm px-4 py-2.5 rounded-lg transition-colors"
-            >
-              <Plus className="w-4 h-4" /> Pasang Lowongan Baru
-            </Link>
+            <div className="flex items-center gap-2">
+              <Link
+                href="/employer/post-job"
+                className="flex items-center gap-2 bg-[#D64545] hover:bg-[#C23B3B] text-white font-semibold text-sm px-4 py-2.5 rounded-lg transition-colors"
+              >
+                <Plus className="w-4 h-4" /> Pasang Lowongan
+              </Link>
+              <Link
+                href="/employer/post-event"
+                className="flex items-center gap-2 border border-[#D64545] text-[#D64545] hover:bg-[#FFF5F5] font-semibold text-sm px-4 py-2.5 rounded-lg transition-colors"
+              >
+                <CalendarDays className="w-4 h-4" /> Buat Event
+              </Link>
+            </div>
           </div>
         </div>
 
