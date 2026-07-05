@@ -5,7 +5,7 @@ import Header from "../../components/layout/Header";
 import Footer from "../../components/layout/Footer";
 import {
   Users, Clock, Plus, MapPin, Building2,
-  CalendarDays, Loader2, Hourglass, PartyPopper,
+  CalendarDays, Loader2, Hourglass, PartyPopper, ChevronRight,
 } from "lucide-react";
 import Link from "next/link";
 import { useAuth } from "../../context/AuthContext";
@@ -229,6 +229,15 @@ export default function EmployerEventsDashboard() {
                               </span>
                             ))}
                           </div>
+                        )}
+
+                        {Number(ev.attendee_count) > 0 && (
+                          <Link
+                            href={`/employer/events/${ev.id}/attendees`}
+                            className="flex items-center gap-1 text-sm text-[#D64545] hover:underline font-semibold mt-3"
+                          >
+                            Lihat Peserta <ChevronRight className="w-4 h-4" />
+                          </Link>
                         )}
                       </div>
                     );

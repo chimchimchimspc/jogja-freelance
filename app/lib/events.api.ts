@@ -37,6 +37,22 @@ export const eventsApi = {
 
   mine: () => api.get<ApiResponse<(ApiEvent & { status: string; created_at: string })[]>>("/events/mine"),
 
+  attendees: (eventId: string) =>
+    api.get<ApiResponse<{
+      event_title: string;
+      attendees: Array<{
+        id: string;
+        rsvp_at: string;
+        checked_in: boolean;
+        checked_in_at?: string;
+        user_id: string;
+        name: string;
+        city?: string;
+        level?: string;
+        profile_picture_url?: string;
+      }>;
+    }>>(`/events/${eventId}/attendees`),
+
   create: (data: {
     title: string;
     description?: string;

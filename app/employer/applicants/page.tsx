@@ -5,11 +5,12 @@ import Header from "../../components/layout/Header";
 import Footer from "../../components/layout/Footer";
 import Toast from "../../components/ui/Toast";
 import {
-  UserRoundSearch, CheckCircle, XCircle, Eye, Loader2, Briefcase, Star,
+  UserRoundSearch, CheckCircle, XCircle, Eye, Loader2, Briefcase, Star, MessageCircle,
 } from "lucide-react";
 import Link from "next/link";
 import { useAuth } from "../../context/AuthContext";
 import { jobsApi, type ApiEmployerApplication, type ApplicationStatus } from "../../lib/jobs.api";
+import { chatApi } from "../../lib/chat.api";
 import { assetUrl } from "../../lib/api";
 
 type Tab = "" | ApplicationStatus;
@@ -48,7 +49,19 @@ export default function ApplicantsPage() {
   const [tab, setTab] = useState<Tab>("");
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState<string | null>(null);
+  const [chatting, setChatting] = useState<string | null>(null);
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
+
+  const handleChat = async (freelancerId: string) => {
+    setChatting(freelancerId);
+    try {
+      const convo = await chatApi.start(freelancerId);
+      router.push(`/chat?c=${convo.id}`);
+    } catch (e: unknown) {
+      setToast({ message: e instanceof Error ? e.message : "Gagal membuka chat.", type: "error" });
+      setChatting(null);
+    }
+  };
 
   useEffect(() => {
     if (authLoading) return;
@@ -228,6 +241,16 @@ export default function ApplicantsPage() {
                             : "✕ Pelamar sudah ditolak"}
                         </p>
                       )}
+                      <button
+                        onClick={() => handleChat(a.freelancer_id)}
+                        disabled={chatting === a.freelancer_id}
+                        className="flex items-center gap-1.5 px-4 py-2 bg-[#146EB4] hover:bg-[#0F5A94] text-white text-sm font-semibold rounded-lg transition-colors disabled:opacity-60"
+                      >
+                        {chatting === a.freelancer_id
+                          ? <Loader2 className="w-4 h-4 animate-spin" />
+                          : <MessageCircle className="w-4 h-4" />}
+                        Chat
+                      </button>
                       <Link
                         href={`/profile/${a.freelancer_id}`}
                         className="ml-auto text-xs text-[#146EB4] hover:underline font-semibold"
