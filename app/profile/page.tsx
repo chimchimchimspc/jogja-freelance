@@ -11,6 +11,7 @@ import Link from "next/link";
 import { profileApi, type ApiProfile } from "../lib/profile.api";
 import type { UserProfile } from "../data/profile";
 import { useAuth } from "../context/AuthContext";
+import EmployerProfileView from "../components/profile/EmployerProfileView";
 
 function adaptProfile(p: ApiProfile): UserProfile {
   return {
@@ -26,10 +27,11 @@ function adaptProfile(p: ApiProfile): UserProfile {
     joinDate: p.created_at?.split("T")[0] ?? "",
     level: (p.level ?? "Bronze") as UserProfile["level"],
     earnedBadges: (p.badges ?? []).map((b) => b.name),
-    passportDaysCompleted: p.passport_days_completed ?? 0,
-    rating: p.rating ?? 0,
-    reviewCount: p.review_count ?? 0,
-    completedProjects: p.completed_projects ?? 0,
+    passportDaysCompleted: Number(p.passport_days_completed ?? 0),
+    // PostgreSQL numeric columns arrive as strings, e.g. "0.00"
+    rating: Number(p.rating ?? 0),
+    reviewCount: Number(p.review_count ?? 0),
+    completedProjects: Number(p.completed_projects ?? 0),
     totalEarnings: 0,
   };
 }
@@ -43,10 +45,17 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError]     = useState<string | null>(null);
 
+  const isEmployer = user?.role === "employer" || user?.role === "event_organizer";
+
   useEffect(() => {
     if (authLoading) return;
     if (!user) {
       router.push("/auth/login");
+      return;
+    }
+    // Profil employer di-fetch oleh EmployerProfileView sendiri
+    if (user.role === "employer" || user.role === "event_organizer") {
+      setLoading(false);
       return;
     }
     (async () => {
@@ -68,6 +77,17 @@ export default function ProfilePage() {
         <main className="flex-1 bg-[#F1F1F1] flex items-center justify-center py-24">
           <Loader2 className="w-8 h-8 animate-spin text-[#D64545]" />
         </main>
+        <Footer />
+      </>
+    );
+  }
+
+  // Session penyedia lowongan / event → profil perusahaan
+  if (isEmployer) {
+    return (
+      <>
+        <Header />
+        <EmployerProfileView />
         <Footer />
       </>
     );
@@ -180,7 +200,7 @@ export default function ProfilePage() {
             </div>
           </div>
 
-          <div className="bg-gradient-to-r from-[#D64545] to-[#E8B4D1] text-white rounded-lg p-6 mt-6 text-center">
+          <div className="bg-[#D64545] text-white rounded-lg p-6 mt-6 text-center">
             <h3 className="text-lg font-bold mb-2">Tingkatkan Profil Anda</h3>
             <p className="text-white/80 text-sm mb-4">
               Kumpulkan lebih banyak badge dan tingkatkan rating untuk menarik lebih banyak project.

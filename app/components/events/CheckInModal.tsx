@@ -6,6 +6,7 @@ import Toast from "../ui/Toast";
 import { Input } from "../ui/Input";
 import { type Event } from "../../data/events";
 import { QrCode, CheckCircle } from "lucide-react";
+import { eventsApi } from "../../lib/events.api";
 
 interface CheckInModalProps {
   event: Event | null;
@@ -25,20 +26,27 @@ export default function CheckInModal({ event, isOpen, onClose, onSuccess }: Chec
       setError("Masukkan kode check-in");
       return;
     }
-
-    if (code.toUpperCase() !== event?.checkInCode) {
-      setError("Kode tidak sesuai. Coba lagi.");
-      return;
-    }
+    if (!event) return;
 
     setLoading(true);
-    await new Promise((r) => setTimeout(r, 1000));
-    setLoading(false);
-    setSuccess(true);
-    setTimeout(() => {
-      onSuccess();
-      handleClose();
-    }, 2000);
+    setError("");
+    try {
+      await eventsApi.checkIn(event.id, code.toUpperCase());
+      setSuccess(true);
+      setTimeout(() => {
+        onSuccess();
+        handleClose();
+      }, 2000);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Check-in gagal. Coba lagi.";
+      setError(
+        msg.includes("Invalid check-in code") ? "Kode tidak sesuai. Coba lagi."
+        : msg.includes("Not RSVPd") ? "Anda belum RSVP ke event ini."
+        : msg
+      );
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleClose = () => {

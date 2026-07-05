@@ -6,6 +6,7 @@ import Toast from "../ui/Toast";
 import { Upload } from "lucide-react";
 import Link from "next/link";
 import { profileApi } from "../../lib/profile.api";
+import { useAuth } from "../../context/AuthContext";
 
 interface FormData {
   profilePicture: File | null;
@@ -31,6 +32,7 @@ const SKILL_OPTIONS = [
 ];
 
 export default function ProfileSetupForm() {
+  const { updateUser } = useAuth();
   const [form, setForm] = useState<FormData>({
     profilePicture: null,
     bio: "",
@@ -93,6 +95,12 @@ export default function ProfileSetupForm() {
         portfolio_url: form.portfolioUrl || undefined,
         skills: form.skills,
       });
+
+      if (form.profilePicture) {
+        const up = await profileApi.uploadPhoto(form.profilePicture);
+        updateUser({ avatar: up.data.url });
+      }
+
       setToast({ message: "Profil berhasil dibuat! Mulai panduan Anda.", type: "success" });
       setTimeout(() => (window.location.href = "/passport"), 2000);
     } catch (err) {

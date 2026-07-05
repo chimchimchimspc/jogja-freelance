@@ -1,46 +1,105 @@
+"use client";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import Header from "../components/layout/Header";
 import Footer from "../components/layout/Footer";
 import {
-  MOCK_EMPLOYER_PROFILE,
-  MOCK_EMPLOYER_JOBS,
-  MOCK_APPLICANTS,
-  formatBudgetRange,
-} from "../data/employer";
-import {
-  Briefcase, Users, CheckCircle, Clock, Plus,
-  ChevronRight, MapPin, Building2, TrendingUp, CalendarDays,
+  Briefcase, Users, Clock, Plus,
+  ChevronRight, MapPin, Building2, Loader2, Hourglass, TrendingUp,
 } from "lucide-react";
 import Link from "next/link";
+import { useAuth } from "../context/AuthContext";
+import { profileApi, type ApiEmployerProfile } from "../lib/profile.api";
+import { jobsApi, type ApiJob } from "../lib/jobs.api";
+import { assetUrl } from "../lib/api";
 
-const levelColor: Record<string, string> = {
-  Bronze:   "text-orange-700 bg-orange-50 border-orange-200",
-  Silver:   "text-gray-600  bg-gray-50   border-gray-200",
-  Gold:     "text-yellow-700 bg-yellow-50 border-yellow-200",
-  Platinum: "text-blue-600  bg-blue-50   border-blue-200",
-};
-
-const statusBadge: Record<string, string> = {
-  active: "bg-green-100 text-green-700",
-  closed: "bg-gray-100  text-gray-500",
-  draft:  "bg-yellow-100 text-yellow-700",
+const statusBadge: Record<string, { label: string; cls: string }> = {
+  active:         { label: "Aktif",           cls: "bg-green-100 text-green-700" },
+  pending_review: { label: "Menunggu Review", cls: "bg-yellow-100 text-yellow-700" },
+  rejected:       { label: "Ditolak",         cls: "bg-red-100 text-red-700" },
+  closed:         { label: "Selesai",         cls: "bg-gray-100 text-gray-500" },
+  draft:          { label: "Draft",           cls: "bg-gray-100 text-gray-500" },
 };
 
 const locationIcon: Record<string, string> = {
   Remote: "🌐", Onsite: "🏢", Hybrid: "🔀",
 };
 
+function fmtBudget(min: number, max: number) {
+  const f = (n: number) => `Rp ${Number(n).toLocaleString("id-ID")}`;
+  return `${f(min)} – ${f(max)}`;
+}
+
+function fmtDate(d: string) {
+  if (!d) return "-";
+  return new Date(d).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" });
+}
+
 export default function EmployerDashboard() {
-  const profile = MOCK_EMPLOYER_PROFILE;
-  const jobs    = MOCK_EMPLOYER_JOBS;
+  const { user, isLoading: authLoading } = useAuth();
+  const router = useRouter();
+  const [profile, setProfile] = useState<ApiEmployerProfile | null>(null);
+  const [jobs, setJobs] = useState<ApiJob[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const totalApplicants  = MOCK_APPLICANTS.length;
-  const totalShortlisted = MOCK_APPLICANTS.filter((a) => a.status === "shortlisted").length;
-  const activeJobs       = jobs.filter((j) => j.status === "active").length;
+  useEffect(() => {
+    if (authLoading) return;
+    if (!user) {
+      router.push("/auth/login?redirect=/employer");
+      return;
+    }
+    if (user.role !== "employer" && user.role !== "event_organizer" && user.role !== "admin") {
+      router.push("/");
+      return;
+    }
+    (async () => {
+      try {
+        const [profRes, jobsRes] = await Promise.all([
+          profileApi.getOwnEmployer(),
+          jobsApi.mine(),
+        ]);
+        setProfile(profRes.data);
+        setJobs(jobsRes.data);
+      } catch (e: unknown) {
+        setError(e instanceof Error ? e.message : "Gagal memuat dashboard");
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [user, authLoading, router]);
 
-  // Recent applicants across all jobs (latest 4)
-  const recentApplicants = [...MOCK_APPLICANTS]
-    .sort((a, b) => b.appliedAt.localeCompare(a.appliedAt))
-    .slice(0, 4);
+  if (authLoading || loading) {
+    return (
+      <>
+        <Header />
+        <main className="flex-1 bg-[#F8F6FF] flex items-center justify-center py-24">
+          <Loader2 className="w-8 h-8 animate-spin text-[#D64545]" />
+        </main>
+        <Footer />
+      </>
+    );
+  }
+
+  if (error) {
+    return (
+      <>
+        <Header />
+        <main className="flex-1 bg-[#F8F6FF] flex items-center justify-center py-24">
+          <div className="text-center">
+            <p className="text-[#DC2C1E] mb-4">{error}</p>
+            <button onClick={() => window.location.reload()}
+              className="text-sm text-[#146EB4] hover:underline">Coba lagi</button>
+          </div>
+        </main>
+        <Footer />
+      </>
+    );
+  }
+
+  const activeJobs      = jobs.filter((j) => j.status === "active").length;
+  const pendingCount    = jobs.filter((j) => j.status === "pending_review").length;
+  const totalApplicants = jobs.reduce((sum, j) => sum + (Number(j.application_count) || 0), 0);
 
   return (
     <>
@@ -50,32 +109,33 @@ export default function EmployerDashboard() {
         <div className="bg-white text-[#1E1B2E] py-8">
           <div className="max-w-6xl mx-auto px-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div className="flex items-center gap-4">
-              <div className="w-14 h-14 rounded-xl bg-[#D64545] flex items-center justify-center text-2xl font-bold">
-                {profile.companyName.charAt(0)}
+              <div className="w-14 h-14 rounded-xl bg-[#D64545] flex items-center justify-center text-2xl font-bold text-white overflow-hidden">
+                {profile?.company_logo_url ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={assetUrl(profile.company_logo_url)} alt={profile.company_name} className="w-full h-full object-cover" />
+                ) : (
+                  profile?.company_name?.charAt(0) ?? "?"
+                )}
               </div>
               <div>
-                <h1 className="text-xl font-bold">{profile.companyName}</h1>
+                <h1 className="text-xl font-bold">{profile?.company_name}</h1>
                 <p className="text-[#6B6880]/60 text-sm flex items-center gap-1.5 mt-0.5">
-                  <MapPin className="w-3.5 h-3.5" /> {profile.location}
-                  <span className="mx-1 text-[#CCCCCC]">·</span>
-                  <Building2 className="w-3.5 h-3.5" /> {profile.industry}
+                  <MapPin className="w-3.5 h-3.5" /> {profile?.location || profile?.city || "Yogyakarta"}
+                  {profile?.industry && (
+                    <>
+                      <span className="mx-1 text-[#CCCCCC]">·</span>
+                      <Building2 className="w-3.5 h-3.5" /> {profile.industry}
+                    </>
+                  )}
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              <Link
-                href="/employer/post-job"
-                className="flex items-center gap-2 bg-[#D64545] hover:bg-[#C23B3B] text-white font-semibold text-sm px-4 py-2.5 rounded-lg transition-colors"
-              >
-                <Plus className="w-4 h-4" /> Pasang Lowongan
-              </Link>
-              <Link
-                href="/employer/post-event"
-                className="flex items-center gap-2 border border-[#D64545] text-[#D64545] hover:bg-[#FFF5F5] font-semibold text-sm px-4 py-2.5 rounded-lg transition-colors"
-              >
-                <CalendarDays className="w-4 h-4" /> Buat Event
-              </Link>
-            </div>
+            <Link
+              href="/employer/post-job"
+              className="flex items-center gap-2 bg-[#D64545] hover:bg-[#C23B3B] text-white font-semibold text-sm px-4 py-2.5 rounded-lg transition-colors"
+            >
+              <Plus className="w-4 h-4" /> Pasang Lowongan
+            </Link>
           </div>
         </div>
 
@@ -83,10 +143,10 @@ export default function EmployerDashboard() {
           {/* Stats */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
             {[
-              { label: "Lowongan Aktif",    value: activeJobs,        icon: Briefcase,    color: "text-[#D64545]", bg: "bg-purple-50" },
-              { label: "Total Pelamar",     value: totalApplicants,   icon: Users,        color: "text-blue-600",  bg: "bg-blue-50"   },
-              { label: "Shortlisted",       value: totalShortlisted,  icon: CheckCircle,  color: "text-green-600", bg: "bg-green-50"  },
-              { label: "Total Lowongan",    value: jobs.length,       icon: TrendingUp,   color: "text-[#E8B4D1]", bg: "bg-orange-50" },
+              { label: "Lowongan Aktif",  value: activeJobs,      icon: Briefcase,  color: "text-[#D64545]",  bg: "bg-purple-50" },
+              { label: "Menunggu Review", value: pendingCount,    icon: Hourglass,  color: "text-yellow-600", bg: "bg-yellow-50" },
+              { label: "Total Pelamar",   value: totalApplicants, icon: Users,      color: "text-blue-600",   bg: "bg-blue-50"   },
+              { label: "Total Lowongan",  value: jobs.length,     icon: TrendingUp, color: "text-green-600",  bg: "bg-green-50"  },
             ].map((s) => (
               <div key={s.label} className="bg-white border border-[#EAE6F5] rounded-xl p-4">
                 <div className={`w-9 h-9 ${s.bg} rounded-lg flex items-center justify-center mb-3`}>
@@ -99,128 +159,127 @@ export default function EmployerDashboard() {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6">
-            {/* Job listings */}
-            <div>
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="font-bold text-[#1E1B2E]">Lowongan Saya</h2>
-                <Link href="/employer/post-job" className="text-sm text-[#D64545] hover:underline font-semibold">
-                  + Pasang baru
-                </Link>
-              </div>
+            <div className="space-y-8">
+              {/* Lowongan saya */}
+              <div>
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="font-bold text-[#1E1B2E]">Lowongan Saya</h2>
+                  <Link href="/employer/post-job" className="text-sm text-[#D64545] hover:underline font-semibold">
+                    + Pasang baru
+                  </Link>
+                </div>
 
-              <div className="space-y-3">
-                {jobs.map((job) => (
-                  <div key={job.id} className="bg-white border border-[#EAE6F5] rounded-xl p-5 hover:border-[#D64545]/40 transition-colors">
-                    <div className="flex items-start justify-between gap-3 mb-3">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap mb-1">
-                          <h3 className="font-bold text-[#1E1B2E]">{job.title}</h3>
-                          <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${statusBadge[job.status]}`}>
-                            {job.status === "active" ? "Aktif" : job.status === "closed" ? "Selesai" : "Draft"}
-                          </span>
-                        </div>
-                        <div className="flex flex-wrap gap-2 text-xs text-[#6B6880]">
-                          <span>{formatBudgetRange(job.budget.min, job.budget.max)}</span>
-                          <span>·</span>
-                          <span>{locationIcon[job.locationType]} {job.locationType}</span>
-                          <span>·</span>
-                          <span>Dipost {job.postedAt}</span>
-                        </div>
-                      </div>
-                      {job.status === "active" && (
-                        <div className="text-right flex-shrink-0">
-                          <p className="text-xs text-[#6B6880]">Deadline</p>
-                          <p className={`text-sm font-bold ${job.deadlineDays <= 7 ? "text-[#E8B4D1]" : "text-[#1E1B2E]"}`}>
-                            {job.deadlineDays} hari
-                          </p>
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="flex items-center gap-4 mb-4">
-                      <div className="flex items-center gap-1.5 text-sm">
-                        <Users className="w-4 h-4 text-[#6B6880]" />
-                        <span className="font-semibold text-[#1E1B2E]">{job.applicantCount}</span>
-                        <span className="text-[#6B6880]">pelamar</span>
-                      </div>
-                      {job.shortlistedCount > 0 && (
-                        <div className="flex items-center gap-1.5 text-sm">
-                          <CheckCircle className="w-4 h-4 text-green-500" />
-                          <span className="font-semibold text-green-700">{job.shortlistedCount}</span>
-                          <span className="text-[#6B6880]">shortlist</span>
-                        </div>
-                      )}
-                      {job.status === "active" && job.applicantCount === 0 && (
-                        <span className="text-xs text-[#6B6880] italic">Belum ada pelamar</span>
-                      )}
-                    </div>
-
-                    <div className="flex flex-wrap gap-1.5 mb-4">
-                      {job.skills.map((s) => (
-                        <span key={s} className="text-xs bg-[#F3F0FB] text-[#D64545] px-2 py-0.5 rounded">
-                          {s}
-                        </span>
-                      ))}
-                    </div>
-
-                    {job.applicantCount > 0 && (
-                      <Link
-                        href={`/employer/jobs/${job.id}/applicants`}
-                        className="flex items-center gap-1 text-sm text-[#D64545] hover:underline font-semibold"
-                      >
-                        Lihat Semua Pelamar <ChevronRight className="w-4 h-4" />
-                      </Link>
-                    )}
+                {jobs.length === 0 ? (
+                  <div className="bg-white border border-dashed border-[#D5D0E8] rounded-xl p-8 text-center">
+                    <Briefcase className="w-8 h-8 text-[#D5D0E8] mx-auto mb-2" />
+                    <p className="text-sm text-[#6B6880] mb-3">Belum ada lowongan yang dipasang</p>
+                    <Link href="/employer/post-job" className="text-sm text-[#D64545] hover:underline font-semibold">
+                      Pasang lowongan pertama Anda →
+                    </Link>
                   </div>
-                ))}
+                ) : (
+                  <div className="space-y-3">
+                    {jobs.map((job) => {
+                      const badge = statusBadge[job.status] ?? statusBadge.draft;
+                      return (
+                        <div key={job.id} className="bg-white border border-[#EAE6F5] rounded-xl p-5 hover:border-[#D64545]/40 transition-colors">
+                          <div className="flex items-start justify-between gap-3 mb-3">
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap mb-1">
+                                <h3 className="font-bold text-[#1E1B2E]">{job.title}</h3>
+                                <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${badge.cls}`}>
+                                  {badge.label}
+                                </span>
+                              </div>
+                              <div className="flex flex-wrap gap-2 text-xs text-[#6B6880]">
+                                <span>{fmtBudget(job.budget_min, job.budget_max)}</span>
+                                <span>·</span>
+                                <span>{locationIcon[job.location_type]} {job.location_type}</span>
+                                <span>·</span>
+                                <span>Dipost {fmtDate(job.created_at)}</span>
+                              </div>
+                            </div>
+                            {job.status === "active" && job.deadline_days && (
+                              <div className="text-right flex-shrink-0">
+                                <p className="text-xs text-[#6B6880]">Deadline</p>
+                                <p className={`text-sm font-bold ${job.deadline_days <= 7 ? "text-[#E8B4D1]" : "text-[#1E1B2E]"}`}>
+                                  {job.deadline_days} hari
+                                </p>
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="flex items-center gap-4 mb-3">
+                            <div className="flex items-center gap-1.5 text-sm">
+                              <Users className="w-4 h-4 text-[#6B6880]" />
+                              <span className="font-semibold text-[#1E1B2E]">{job.application_count ?? 0}</span>
+                              <span className="text-[#6B6880]">pelamar</span>
+                            </div>
+                            {job.status === "pending_review" && (
+                              <span className="text-xs text-yellow-700 italic flex items-center gap-1">
+                                <Clock className="w-3.5 h-3.5" /> Sedang direview admin
+                              </span>
+                            )}
+                          </div>
+
+                          {job.skills?.length > 0 && (
+                            <div className="flex flex-wrap gap-1.5 mb-3">
+                              {job.skills.map((s) => (
+                                <span key={s} className="text-xs bg-[#F3F0FB] text-[#D64545] px-2 py-0.5 rounded">
+                                  {s}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+
+                          {Number(job.application_count) > 0 && (
+                            <Link
+                              href={`/employer/jobs/${job.id}/applicants`}
+                              className="flex items-center gap-1 text-sm text-[#D64545] hover:underline font-semibold"
+                            >
+                              Lihat Semua Pelamar <ChevronRight className="w-4 h-4" />
+                            </Link>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
+
             </div>
 
             {/* Right sidebar */}
             <div className="space-y-5">
-              {/* Pelamar terbaru */}
               <div className="bg-white border border-[#EAE6F5] rounded-xl p-5">
-                <h3 className="font-bold text-[#1E1B2E] mb-4">Pelamar Terbaru</h3>
-                <div className="space-y-3">
-                  {recentApplicants.map((a) => {
-                    const job = jobs.find((j) => j.id === a.jobId);
-                    return (
-                      <div key={a.id} className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[#D64545] to-[#E8B4D1] flex items-center justify-center text-white text-sm font-bold flex-shrink-0">
-                          {a.name.charAt(0)}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-semibold text-[#1E1B2E] truncate">{a.name}</p>
-                          <p className="text-xs text-[#6B6880] truncate">{job?.title}</p>
-                        </div>
-                        <span className={`text-xs px-2 py-0.5 rounded-full border font-semibold flex-shrink-0 ${levelColor[a.level]}`}>
-                          {a.level}
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Company stats */}
-              <div className="bg-white text-white rounded-xl p-5">
                 <div className="flex items-center gap-2 mb-4">
                   <Clock className="w-4 h-4 text-[#E8B4D1]" />
-                  <h3 className="font-bold text-sm">Bergabung {profile.joinedAt}</h3>
+                  <h3 className="font-bold text-sm text-[#1E1B2E]">
+                    Bergabung {profile?.created_at ? fmtDate(profile.created_at) : "-"}
+                  </h3>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
-                  <div className="bg-white/10 rounded-lg p-3 text-center">
-                    <p className="text-2xl font-bold text-[#E8B4D1]">{profile.totalJobsPosted}</p>
-                    <p className="text-xs text-[#6B6880]/60 mt-0.5">Lowongan Dipost</p>
+                  <div className="bg-[#F8F6FF] rounded-lg p-3 text-center">
+                    <p className="text-2xl font-bold text-[#D64545]">{profile?.total_jobs_posted ?? 0}</p>
+                    <p className="text-xs text-[#6B6880] mt-0.5">Lowongan Dipost</p>
                   </div>
-                  <div className="bg-white/10 rounded-lg p-3 text-center">
-                    <p className="text-2xl font-bold text-[#E8B4D1]">{profile.totalHired}</p>
-                    <p className="text-xs text-[#6B6880]/60 mt-0.5">Freelancer Hired</p>
+                  <div className="bg-[#F8F6FF] rounded-lg p-3 text-center">
+                    <p className="text-2xl font-bold text-[#D64545]">{profile?.total_hired ?? 0}</p>
+                    <p className="text-xs text-[#6B6880] mt-0.5">Freelancer Hired</p>
                   </div>
                 </div>
               </div>
 
-              {/* Tips */}
+              <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+                <p className="text-xs font-bold text-blue-800 mb-1">ℹ️ Alur Review</p>
+                <p className="text-xs text-blue-700 leading-relaxed">
+                  Lowongan yang baru dipasang akan <strong>direview admin</strong> terlebih dahulu.
+                  Setelah disetujui, otomatis tampil di halaman Lowongan untuk para freelancer.
+                  Untuk membuat & mengelola event, buka halaman{" "}
+                  <Link href="/employer/events" className="underline font-semibold">Events</Link>.
+                </p>
+              </div>
+
               <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
                 <p className="text-xs font-bold text-amber-800 mb-1">💡 Tips Employer</p>
                 <p className="text-xs text-amber-700 leading-relaxed">

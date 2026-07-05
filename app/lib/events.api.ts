@@ -35,6 +35,8 @@ export const eventsApi = {
 
   get: (id: string) => api.get<ApiResponse<ApiEvent>>(`/events/${id}`),
 
+  mine: () => api.get<ApiResponse<(ApiEvent & { status: string; created_at: string })[]>>("/events/mine"),
+
   create: (data: {
     title: string;
     description?: string;

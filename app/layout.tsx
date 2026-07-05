@@ -6,6 +6,9 @@ import { AuthProvider } from "./context/AuthContext";
 export const metadata: Metadata = {
   title: "Jogja Freelance Passport",
   description: "Platform untuk freelancer menemukan peluang & panduan harian di Yogyakarta",
+  icons: {
+    icon: "/favicon.ico",
+  },
 };
 
 export default function RootLayout({

@@ -1,9 +1,13 @@
 "use client";
-import { Copy, Share2, MapPin, Award, Star, Calendar, DollarSign } from "lucide-react";
+import { Copy, Share2, MapPin, Award, Star, Calendar, DollarSign, LogOut } from "lucide-react";
 import { useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import Button from "../ui/Button";
 import Toast from "../ui/Toast";
 import { type UserProfile, formatCurrency, getDaysAgoText } from "../../data/profile";
+import { assetUrl } from "../../lib/api";
+import { useAuth } from "../../context/AuthContext";
 
 interface ProfileHeaderProps {
   profile: UserProfile;
@@ -18,8 +22,19 @@ const LEVEL_ICON: Record<string, string> = {
 };
 
 export default function ProfileHeader({ profile, isOwnProfile = false }: ProfileHeaderProps) {
+  const router = useRouter();
+  const { logout } = useAuth();
   const [toast, setToast] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [bioExpanded, setBioExpanded] = useState(false);
+
+  const BIO_COLLAPSE_LENGTH = 160;
+  const bioIsLong = (profile.bio ?? "").length > BIO_COLLAPSE_LENGTH;
+
+  const handleLogout = () => {
+    logout();
+    router.push("/auth/login");
+  };
 
   const handleCopyLink = () => {
     const link = `${typeof window !== "undefined" ? window.location.origin : ""}/profile/${profile.id}`;
@@ -39,8 +54,13 @@ export default function ProfileHeader({ profile, isOwnProfile = false }: Profile
         <div className="flex items-start justify-between gap-4 mb-4">
           <div className="flex items-start gap-4 flex-1">
             {/* Avatar */}
-            <div className="w-24 h-24 sm:w-32 sm:h-32 rounded-full bg-gradient-to-br from-[#D64545] to-[#E8B4D1] flex items-center justify-center text-4xl sm:text-5xl font-bold text-white flex-shrink-0 border-4 border-white shadow-lg">
-              {profile.name.charAt(0)}
+            <div className="w-24 h-24 sm:w-32 sm:h-32 rounded-full bg-[#D64545] flex items-center justify-center text-4xl sm:text-5xl font-bold text-white flex-shrink-0 border-4 border-white shadow-lg overflow-hidden">
+              {profile.profilePicture ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={assetUrl(profile.profilePicture)} alt={profile.name} className="w-full h-full object-cover" />
+              ) : (
+                profile.name.charAt(0)
+              )}
             </div>
 
             {/* Name & Info */}
@@ -75,15 +95,45 @@ export default function ProfileHeader({ profile, isOwnProfile = false }: Profile
               <Copy className="w-4 h-4" /> Share
             </Button>
             {isOwnProfile && (
-              <Button size="sm" variant="secondary">
-                Edit Profil
-              </Button>
+              <>
+                <Link
+                  href="/profile/edit"
+                  className="inline-flex items-center justify-center px-3 py-1.5 text-sm bg-[#F1F1F1] hover:bg-[#E7E7E7] text-[#232F3E] rounded-lg font-semibold transition-colors"
+                >
+                  Edit Profil
+                </Link>
+                <button
+                  onClick={handleLogout}
+                  className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 text-sm bg-red-50 hover:bg-red-100 text-[#DC3545] border border-red-200 rounded-lg font-semibold transition-colors"
+                >
+                  <LogOut className="w-4 h-4" />
+                  Keluar
+                </button>
+              </>
             )}
           </div>
         </div>
 
-        {/* Bio */}
-        <p className="text-sm text-[#232F3E] leading-relaxed max-w-2xl">{profile.bio}</p>
+        {/* Bio — break-words mencegah teks panjang tembus keluar card */}
+        {profile.bio && (
+          <div className="max-w-2xl">
+            <p
+              className={`text-sm text-[#232F3E] leading-relaxed break-words whitespace-pre-line ${
+                bioIsLong && !bioExpanded ? "line-clamp-3" : ""
+              }`}
+            >
+              {profile.bio}
+            </p>
+            {bioIsLong && (
+              <button
+                onClick={() => setBioExpanded((v) => !v)}
+                className="mt-1 text-xs font-semibold text-[#146EB4] hover:underline"
+              >
+                {bioExpanded ? "Sembunyikan" : "Lihat selengkapnya"}
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Stats grid */}

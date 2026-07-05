@@ -68,9 +68,9 @@ export default function LoginForm() {
             onChange={(e) => setForm((p) => ({ ...p, password: e.target.value }))}
             error={errors.password}
           />
-          <Link href="#" className="text-xs text-[#D64545] hover:underline">
+          <button type="button" className="text-xs text-[#D64545] hover:underline bg-none border-none p-0 cursor-pointer">
             Lupa password?
-          </Link>
+          </button>
         </div>
 
         <Button type="submit" fullWidth size="lg" loading={loading}>

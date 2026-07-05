@@ -123,8 +123,8 @@ export default function PostEventPage() {
               Biasanya disetujui dalam 1–2 hari kerja. Event akan tampil publik setelah disetujui.
             </p>
             <div className="flex gap-3 justify-center">
-              <Link href="/employer" className="px-5 py-2.5 bg-[#D64545] hover:bg-[#C23B3B] text-white rounded-lg font-semibold text-sm transition-colors">
-                Kembali ke Dashboard
+              <Link href="/employer/events" className="px-5 py-2.5 bg-[#D64545] hover:bg-[#C23B3B] text-white rounded-lg font-semibold text-sm transition-colors">
+                Kembali ke Event Saya
               </Link>
               <button
                 onClick={() => { setForm(INIT); setSubmitted(false); setErrors({}); }}
@@ -147,8 +147,8 @@ export default function PostEventPage() {
       <main className="flex-1 bg-[#F8F6FF]">
         <div className="bg-white text-[#1E1B2E] py-8">
           <div className="max-w-3xl mx-auto px-4">
-            <Link href="/employer" className="flex items-center gap-1.5 text-[#6B6880] hover:text-[#D64545] text-sm mb-4 transition-colors">
-              <ChevronLeft className="w-4 h-4" /> Dashboard
+            <Link href="/employer/events" className="flex items-center gap-1.5 text-[#6B6880] hover:text-[#D64545] text-sm mb-4 transition-colors">
+              <ChevronLeft className="w-4 h-4" /> Event Saya
             </Link>
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-[#D64545] rounded-lg flex items-center justify-center">
@@ -364,7 +364,7 @@ export default function PostEventPage() {
 
             <div className="flex flex-col sm:flex-row gap-3 justify-end">
               <Link
-                href="/employer"
+                href="/employer/events"
                 className="px-6 py-2.5 border border-[#EAE6F5] text-[#1E1B2E] rounded-lg font-semibold text-sm hover:bg-white transition-colors text-center"
               >
                 Batal

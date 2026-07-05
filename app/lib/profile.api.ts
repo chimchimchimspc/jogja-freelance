@@ -26,6 +26,29 @@ export interface UpdateProfileData {
   skills?: string[];
 }
 
+export interface ApiEmployerProfile {
+  id: string;
+  full_name: string;
+  city: string;
+  created_at: string;
+  company_name: string;
+  industry?: string;
+  company_description?: string;
+  company_logo_url?: string;
+  website_url?: string;
+  location?: string;
+  total_jobs_posted: number;
+  total_hired: number;
+}
+
+export interface UpdateEmployerProfileData {
+  company_name?: string;
+  industry?: string;
+  company_description?: string;
+  website_url?: string;
+  location?: string;
+}
+
 export const profileApi = {
   getOwn: () => api.get<ApiResponse<ApiProfile>>("/profile"),
 
@@ -34,4 +57,16 @@ export const profileApi = {
 
   update: (data: UpdateProfileData) =>
     api.put<ApiResponse<null>>("/profile", data),
+
+  uploadPhoto: (file: File) => {
+    const fd = new FormData();
+    fd.append("photo", file);
+    return api.upload<ApiResponse<{ url: string }>>("/profile/photo", fd);
+  },
+
+  getOwnEmployer: () =>
+    api.get<ApiResponse<ApiEmployerProfile>>("/profile/employer"),
+
+  updateEmployer: (data: UpdateEmployerProfileData) =>
+    api.put<ApiResponse<null>>("/profile/employer", data),
 };

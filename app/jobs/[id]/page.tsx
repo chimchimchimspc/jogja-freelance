@@ -10,6 +10,7 @@ import Toast from "../../components/ui/Toast";
 import { ArrowLeft, DollarSign, Clock, Eye, Users, MapPin, Mail, Phone, CheckCircle, AlertCircle, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { jobsApi, type ApiJob } from "../../lib/jobs.api";
+import LocationMap from "../../components/ui/LocationMap";
 
 const categoryColor: Record<string, "blue" | "orange" | "green" | "gray"> = {
   "Web Development":    "blue",
@@ -68,6 +69,7 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
 
   const budget    = job.budget_max ?? job.budget_min ?? 0;
   const deadline  = job.deadline_days ?? 0;
+  const hasCoords = !!(job.latitude && job.longitude);
 
   return (
     <>
@@ -218,10 +220,46 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
                   </div>
                 </div>
                 <div className="mt-3 text-xs text-[#565A5C] space-y-1">
-                  <p>📍 {job.location}</p>
+                  <p>📍 {job.location || job.location_type}</p>
                   <p>📅 Diposting {job.created_at?.split("T")[0]}</p>
                   <p>👁️ {job.view_count} kali dilihat</p>
                 </div>
+              </div>
+
+              {/* Lokasi kerja */}
+              <div className="bg-white border border-[#E7E7E7] rounded-lg overflow-hidden">
+                <div className="p-5">
+                  <p className="text-sm font-bold text-[#232F3E] mb-3 flex items-center gap-2">
+                    <MapPin className="w-4 h-4 text-[#D64545]" />
+                    Lokasi Kerja
+                  </p>
+                  <p className="text-sm text-[#232F3E] leading-relaxed bg-[#F8F8F8] p-3 rounded">
+                    {job.location || (job.location_type === "Remote" ? "Remote — bisa dikerjakan dari mana saja" : job.location_type)}
+                  </p>
+                </div>
+
+                {hasCoords && (
+                  <>
+                    <div style={{ height: "260px" }} className="w-full border-t border-[#E7E7E7]">
+                      <LocationMap
+                        latitude={Number(job.latitude)}
+                        longitude={Number(job.longitude)}
+                        label={`${job.company} — ${job.location}`}
+                      />
+                    </div>
+                    <div className="p-5 border-t border-[#E7E7E7]">
+                      <a
+                        href={`https://maps.google.com/?q=${job.latitude},${job.longitude}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-2 text-sm text-[#D64545] hover:text-[#C23B3B] font-semibold"
+                      >
+                        <MapPin className="w-4 h-4" />
+                        Buka di Google Maps →
+                      </a>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           </div>

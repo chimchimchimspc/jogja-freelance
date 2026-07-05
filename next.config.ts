@@ -6,8 +6,8 @@ const nextConfig: NextConfig = {
     // Type checking runs separately in CI; skip during Docker build
     ignoreBuildErrors: true,
   },
-  eslint: {
-    ignoreDuringBuilds: true,
+  turbopack: {
+    root: process.cwd(),
   },
 };
 

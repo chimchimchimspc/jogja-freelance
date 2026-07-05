@@ -109,7 +109,7 @@ export default function BadgesPreviewSection() {
             {/* Progress bar */}
             <div className="w-full bg-[#E7E7E7] rounded-full h-2.5 mt-4">
               <div
-                className="bg-gradient-to-r from-[#D64545] to-[#E8B4D1] h-2.5 rounded-full"
+                className="bg-[#D64545] h-2.5 rounded-full"
                 style={{
                   width: `${displayPct}%`,
                   transition: "width 1s cubic-bezier(0.4, 0, 0.2, 1)",

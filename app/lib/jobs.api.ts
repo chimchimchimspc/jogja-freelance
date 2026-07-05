@@ -12,6 +12,8 @@ export interface ApiJob {
   deadline_days: number;
   deadline_date: string;
   location: string;
+  latitude?: number;
+  longitude?: number;
   location_type: "Remote" | "Onsite" | "Hybrid";
   experience_level: "Junior" | "Mid" | "Senior";
   contact_whatsapp?: string;
@@ -39,6 +41,19 @@ export interface ApiApplication {
   budget_max: number;
 }
 
+export interface ApiEmployerApplication {
+  id: string;
+  status: "pending" | "reviewed" | "accepted" | "rejected" | "expired";
+  submitted_at: string;
+  freelancer_id: string;
+  name: string;
+  level?: string;
+  rating?: number;
+  profile_picture_url?: string;
+  job_id: string;
+  job_title: string;
+}
+
 export interface JobsQuery {
   page?: number;
   limit?: number;
@@ -63,6 +78,11 @@ export const jobsApi = {
   },
 
   get: (id: string) => api.get<ApiResponse<ApiJob>>(`/jobs/${id}`),
+
+  mine: () => api.get<ApiResponse<ApiJob[]>>("/jobs/mine"),
+
+  employerApplications: (limit = 10) =>
+    api.get<ApiResponse<ApiEmployerApplication[]>>(`/applications/employer?limit=${limit}`),
 
   create: (data: Partial<ApiJob> & { skills?: string[]; requirements?: string[] }) =>
     api.post<ApiResponse<ApiJob>>("/jobs", data),

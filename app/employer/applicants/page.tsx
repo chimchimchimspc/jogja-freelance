@@ -112,7 +112,7 @@ export default function ApplicantsAndRegistrantsPage() {
             <div className="space-y-3">
               {filtered.map((entry) => (
                 <div key={`${entry.source}-${entry.id}`} className="bg-white border border-[#EAE6F5] rounded-xl p-4 flex items-center gap-4">
-                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#D64545] to-[#E8B4D1] flex items-center justify-center text-white font-bold flex-shrink-0">
+                  <div className="w-10 h-10 rounded-full bg-[#D64545] flex items-center justify-center text-white font-bold flex-shrink-0">
                     {entry.name.charAt(0)}
                   </div>
                   <div className="flex-1 min-w-0">

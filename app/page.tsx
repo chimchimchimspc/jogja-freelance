@@ -11,17 +11,19 @@ import BadgesPreviewSection from "./components/sections/BadgesPreviewSection";
 import CTASection from "./components/sections/CTASection";
 import FadeInSection from "./components/ui/FadeInSection";
 import LoggedInHome from "./components/sections/LoggedInHome";
+import EmployerHome from "./components/sections/EmployerHome";
 
 export default function HomePage() {
   const { user } = useAuth();
 
   if (user) {
+    const isEmployer = user.role === "employer" || user.role === "event_organizer";
     return (
       <>
         <SplashScreen />
         <Header />
         <main>
-          <LoggedInHome />
+          {isEmployer ? <EmployerHome /> : <LoggedInHome />}
         </main>
         <Footer />
       </>

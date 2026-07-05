@@ -1,12 +1,13 @@
 "use client";
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Search, Bell, Menu, X, LogOut } from "lucide-react";
+import { Search, Bell, Menu, X } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { clsx } from "clsx";
 import { useAuth, type User } from "../../context/AuthContext";
 import { notificationsApi, type Notification } from "../../lib/notifications.api";
+import { assetUrl } from "../../lib/api";
 
 const GUEST_NAV_LINKS = [
   { href: "/jobs",     label: "Lowongan" },
@@ -23,8 +24,8 @@ const FREELANCER_NAV_LINKS = [
 
 const RECRUITER_NAV_LINKS = [
   { href: "/employer",            label: "Lowongan" },
+  { href: "/employer/events",     label: "Events" },
   { href: "/employer/applicants", label: "Pendaftar" },
-  { href: "/events",              label: "Events" },
 ];
 
 const ADMIN_NAV_LINKS = [
@@ -50,20 +51,23 @@ function timeAgo(dateStr: string): string {
 }
 
 export default function Header() {
-  const router = useRouter();
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const [menuOpen,   setMenuOpen]   = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [notifOpen,  setNotifOpen]  = useState(false);
   const [notifClosing, setNotifClosing] = useState(false);
-  const [accountOpen, setAccountOpen] = useState(false);
   const [search,     setSearch]     = useState("");
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const pathname  = usePathname();
   const inputRef  = useRef<HTMLInputElement>(null);
   const notifRef  = useRef<HTMLDivElement>(null);
-  const accountRef = useRef<HTMLDivElement>(null);
   const navLinks = getNavLinks(user?.role);
+
+  // Hanya link paling spesifik yang di-highlight, agar "/employer"
+  // tidak ikut aktif saat berada di "/employer/events"
+  const activeHref = navLinks
+    .filter((l) => pathname === l.href || pathname.startsWith(l.href + "/"))
+    .sort((a, b) => b.href.length - a.href.length)[0]?.href;
 
   const fetchNotifications = useCallback(async () => {
     if (!user) return;
@@ -108,15 +112,12 @@ export default function Header() {
           setNotifClosing(false);
         }, 200);
       }
-      if (accountRef.current && !accountRef.current.contains(event.target as Node)) {
-        setAccountOpen(false);
-      }
     }
-    if ((notifOpen || accountOpen) && !notifClosing) {
+    if (notifOpen && !notifClosing) {
       document.addEventListener("mousedown", handleClickOutside);
       return () => document.removeEventListener("mousedown", handleClickOutside);
     }
-  }, [notifOpen, accountOpen, notifClosing]);
+  }, [notifOpen, notifClosing]);
 
   return (
     <header className="sticky top-0 z-40 shadow-md bg-white">
@@ -131,7 +132,7 @@ export default function Header() {
         {/* Nav links — kiri, desktop */}
         <nav className="hidden md:flex items-center gap-6">
           {navLinks.map((l) => {
-            const isActive = pathname === l.href || pathname.startsWith(l.href + "/");
+            const isActive = l.href === activeHref;
             return (
               <Link
                 key={l.href}
@@ -274,70 +275,20 @@ export default function Header() {
           </div>
           )}
 
-          {/* Account menu */}
+          {/* Avatar → langsung ke halaman profil */}
           {user ? (
-            <div className="relative" ref={accountRef}>
-              <button
-                onClick={() => setAccountOpen((v) => !v)}
-                className="flex-shrink-0 w-8 h-8 rounded-full border-2 border-[#D64545] hover:border-[#C23B3B] transition-colors bg-gradient-to-br from-[#D64545] to-[#E8B4D1] flex items-center justify-center text-white text-xs font-bold"
-                title={user.name}
-              >
-                {user.name.charAt(0).toUpperCase()}
-              </button>
-
-              {accountOpen && (
-                <div
-                  className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-xl border border-[#E7E7E7] z-50 overflow-hidden"
-                  style={{
-                    animation: "notif-dropdown 300ms cubic-bezier(0.34, 1.56, 0.64, 1) forwards",
-                  }}
-                >
-                  <div className="p-4 border-b border-[#E7E7E7] bg-[#F8F8F8]">
-                    <p className="font-semibold text-[#232F3E] text-sm">{user.name}</p>
-                    <p className="text-xs text-[#565A5C]">{user.email}</p>
-                  </div>
-
-                  <div className="p-2">
-                    <Link
-                      href="/profile"
-                      className="block px-4 py-2 text-sm text-[#232F3E] hover:bg-[#F8F8F8] rounded transition-colors"
-                      onClick={() => setAccountOpen(false)}
-                    >
-                      Profil Saya
-                    </Link>
-                    {(user.role === "employer" || user.role === "event_organizer") && (
-                      <Link
-                        href="/employer"
-                        className="block px-4 py-2 text-sm text-[#232F3E] hover:bg-[#F8F8F8] rounded transition-colors"
-                        onClick={() => setAccountOpen(false)}
-                      >
-                        Dashboard Employer
-                      </Link>
-                    )}
-                    {user.role === "admin" && (
-                      <Link
-                        href="/admin"
-                        className="block px-4 py-2 text-sm text-[#232F3E] hover:bg-[#F8F8F8] rounded transition-colors"
-                        onClick={() => setAccountOpen(false)}
-                      >
-                        Admin Panel
-                      </Link>
-                    )}
-                    <button
-                      onClick={() => {
-                        logout();
-                        setAccountOpen(false);
-                        router.push("/auth/login");
-                      }}
-                      className="w-full text-left px-4 py-2 text-sm text-[#DC3545] hover:bg-[#F8F8F8] rounded transition-colors flex items-center gap-2"
-                    >
-                      <LogOut className="w-4 h-4" />
-                      Keluar
-                    </button>
-                  </div>
-                </div>
+            <Link
+              href="/profile"
+              className="flex-shrink-0 w-8 h-8 rounded-full border-2 border-[#D64545] hover:border-[#C23B3B] transition-colors bg-[#D64545] flex items-center justify-center text-white text-xs font-bold overflow-hidden"
+              title={user.name}
+            >
+              {user.avatar ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={assetUrl(user.avatar)} alt={user.name} className="w-full h-full object-cover" />
+              ) : (
+                user.name.charAt(0).toUpperCase()
               )}
-            </div>
+            </Link>
           ) : (
             <Link
               href="/auth/login"
@@ -376,7 +327,7 @@ export default function Header() {
           </div>
         </div>
         {navLinks.map((l) => {
-          const isActive = pathname === l.href || pathname.startsWith(l.href + "/");
+          const isActive = l.href === activeHref;
           return (
             <Link
               key={l.href}

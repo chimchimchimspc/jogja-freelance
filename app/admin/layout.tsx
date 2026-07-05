@@ -1,6 +1,7 @@
 "use client";
-import { LayoutDashboard, Briefcase, Users, Calendar, Award, BarChart3, Settings, MapPin, LogOut, Loader2 } from "lucide-react";
+import { LayoutDashboard, Briefcase, Users, Calendar, Award, BarChart3, Settings, LogOut, Loader2 } from "lucide-react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
@@ -39,11 +40,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       {/* Admin top bar */}
       <header className="bg-white text-[#1E1B2E] px-6 py-3 flex items-center justify-between sticky top-0 z-40 shadow-md">
         <div className="flex items-center gap-3">
-          <MapPin className="w-5 h-5 text-[#D64545]" />
-          <span className="font-bold text-lg">
-            Jogja<span className="text-[#D64545]">Freelance</span>
-            <span className="ml-2 text-xs bg-[#D64545] text-white px-2 py-0.5 rounded font-normal">ADMIN</span>
-          </span>
+          <Link href="/admin" className="flex items-center">
+            <Image src="/logo.png" alt="JogjaFreelance" width={150} height={36} className="object-contain" style={{ mixBlendMode: "multiply" }} />
+          </Link>
+          <span className="text-xs bg-[#D64545] text-white px-2 py-0.5 rounded font-semibold">ADMIN</span>
         </div>
         <div className="flex items-center gap-4">
           <span className="text-sm text-[#6B6880]">{user.email}</span>

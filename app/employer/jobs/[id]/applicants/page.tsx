@@ -69,13 +69,6 @@ export default function ApplicantsPage({ params }: { params: Promise<{ id: strin
     Ditolak:     applicants.filter((a) => a.status === "rejected").length,
   };
 
-  const avatarColors = [
-    "from-[#D64545] to-[#E8B4D1]",
-    "from-[#D64545] to-[#E8B4D1]",
-    "from-[#D64545] to-[#E8B4D1]",
-    "from-[#E8B4D1] to-[#D64545]",
-  ];
-
   return (
     <>
       <Header />
@@ -166,7 +159,7 @@ export default function ApplicantsPage({ params }: { params: Promise<{ id: strin
                     <div className="p-5">
                       <div className="flex items-start gap-4">
                         {/* Avatar */}
-                        <div className={`w-12 h-12 rounded-full bg-gradient-to-br ${avatarColors[i % avatarColors.length]} flex items-center justify-center text-white font-bold text-lg flex-shrink-0 ring-2 ring-white ${a.status === "shortlisted" ? `ring-offset-1 ${level.ring}` : ""}`}>
+                        <div className={`w-12 h-12 rounded-full bg-[#D64545] flex items-center justify-center text-white font-bold text-lg flex-shrink-0 ring-2 ring-white ${a.status === "shortlisted" ? `ring-offset-1 ${level.ring}` : ""}`}>
                           {a.name.charAt(0)}
                         </div>
 
