@@ -262,13 +262,20 @@ export default function Header() {
                   )}
                 </div>
 
-                <div className="p-3 border-t border-[#E7E7E7] bg-[#F8F8F8]">
+                <div className="p-3 border-t border-[#E7E7E7] bg-[#F8F8F8] flex items-center gap-2">
                   <button
                     onClick={handleMarkAllRead}
-                    className="w-full text-center text-sm text-[#DC3545] font-semibold hover:text-[#C23B3B] py-2"
+                    className="flex-1 text-center text-sm text-[#DC3545] font-semibold hover:text-[#C23B3B] py-2"
                   >
-                    Tandai semua sudah dibaca
+                    Tandai semua dibaca
                   </button>
+                  <Link
+                    href="/notifications"
+                    onClick={() => setNotifOpen(false)}
+                    className="flex-1 text-center text-sm text-[#146EB4] font-semibold hover:underline py-2"
+                  >
+                    Lihat semua
+                  </Link>
                 </div>
               </div>
             )}
