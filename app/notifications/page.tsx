@@ -3,10 +3,12 @@ import { useState, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
   Bell, FileText, CheckCircle, Briefcase, Calendar, Award,
-  MailOpen, Trash2, Inbox, Loader2,
+  MailOpen, Trash2, Inbox, Loader2, ExternalLink, Clock,
 } from "lucide-react";
+import Link from "next/link";
 import Header from "../components/layout/Header";
 import Footer from "../components/layout/Footer";
+import Modal from "../components/ui/Modal";
 import { notificationsApi, type Notification } from "../lib/notifications.api";
 import { useAuth } from "../context/AuthContext";
 
@@ -22,6 +24,30 @@ const TYPE_STYLE: Record<string, { icon: typeof Bell; cls: string }> = {
   badge:              { icon: Award,       cls: "bg-yellow-50 text-yellow-600" },
 };
 const DEFAULT_STYLE = { icon: Bell, cls: "bg-gray-100 text-gray-600" };
+
+// Label tipe untuk detail
+const TYPE_LABEL: Record<string, string> = {
+  application_update: "Update Lamaran",
+  job_approved:       "Lowongan Disetujui",
+  event_approved:     "Event Disetujui",
+  badge_earned:       "Badge Baru",
+  job_match:          "Lowongan Cocok Untukmu",
+};
+
+// Tujuan link berdasarkan related_type
+function relatedLink(n: Notification): { href: string; label: string } | null {
+  if (n.related_type === "job" && n.related_id)   return { href: `/jobs/${n.related_id}`,   label: "Lihat Lowongan" };
+  if (n.related_type === "event" && n.related_id) return { href: `/events/${n.related_id}`, label: "Lihat Event" };
+  if (n.related_type === "application")           return { href: "/jobs/applications",      label: "Lihat Lamaranku" };
+  if (n.related_type === "badge")                 return { href: "/profile",                label: "Lihat Badge Saya" };
+  return null;
+}
+
+function fmtFullDate(dateStr: string) {
+  return new Date(dateStr).toLocaleDateString("id-ID", {
+    weekday: "long", day: "numeric", month: "long", year: "numeric",
+  }) + " · " + new Date(dateStr).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" });
+}
 
 type Filter = "semua" | "belum" | "sudah";
 
@@ -43,6 +69,7 @@ export default function NotificationsPage() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [filter, setFilter] = useState<Filter>("semua");
   const [loading, setLoading] = useState(true);
+  const [selected, setSelected] = useState<Notification | null>(null);
 
   useEffect(() => {
     if (authLoading) return;
@@ -167,11 +194,14 @@ export default function NotificationsPage() {
                 return (
                   <div
                     key={n.id}
-                    onClick={() => !n.is_read && handleMarkRead(n.id)}
-                    className={`bg-white border rounded-xl p-4 flex items-start gap-3 transition-all group ${
+                    onClick={() => {
+                      setSelected(n);
+                      if (!n.is_read) handleMarkRead(n.id);
+                    }}
+                    className={`bg-white border rounded-xl p-4 flex items-start gap-3 transition-all group cursor-pointer ${
                       !n.is_read
-                        ? "border-[#D64545]/30 shadow-sm cursor-pointer hover:border-[#D64545]"
-                        : "border-[#EAE6F5] opacity-80"
+                        ? "border-[#D64545]/30 shadow-sm hover:border-[#D64545]"
+                        : "border-[#EAE6F5] opacity-80 hover:opacity-100 hover:border-[#D5D0E8]"
                     }`}
                   >
                     <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${style.cls}`}>
@@ -182,8 +212,10 @@ export default function NotificationsPage() {
                         <p className="text-sm font-bold text-[#1E1B2E]">{n.title}</p>
                         {!n.is_read && <span className="w-2 h-2 bg-[#D64545] rounded-full flex-shrink-0" />}
                       </div>
-                      <p className="text-sm text-[#6B6880] mt-0.5 break-words">{n.message}</p>
-                      <p className="text-xs text-[#9B96AD] mt-1">{timeAgo(n.created_at)}</p>
+                      <p className="text-sm text-[#6B6880] mt-0.5 break-words line-clamp-2">{n.message}</p>
+                      <p className="text-xs text-[#9B96AD] mt-1">
+                        {timeAgo(n.created_at)} · <span className="text-[#146EB4]">Klik untuk detail</span>
+                      </p>
                     </div>
                     <button
                       onClick={(e) => { e.stopPropagation(); handleDelete(n.id); }}
@@ -200,6 +232,66 @@ export default function NotificationsPage() {
         </div>
       </main>
       <Footer />
+
+      {/* Detail notifikasi */}
+      <Modal
+        isOpen={!!selected}
+        onClose={() => setSelected(null)}
+        title="Detail Notifikasi"
+        size="md"
+      >
+        {selected && (() => {
+          const style = TYPE_STYLE[selected.type] ?? DEFAULT_STYLE;
+          const Icon = style.icon;
+          const link = relatedLink(selected);
+          return (
+            <div>
+              <div className="flex items-start gap-3 mb-4">
+                <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${style.cls}`}>
+                  <Icon className="w-6 h-6" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-bold text-[#D64545] uppercase mb-0.5">
+                    {TYPE_LABEL[selected.type] ?? "Notifikasi"}
+                  </p>
+                  <h3 className="text-lg font-bold text-[#1E1B2E]">{selected.title}</h3>
+                </div>
+              </div>
+
+              <p className="text-sm text-[#232F3E] leading-relaxed bg-[#F8F6FF] rounded-lg p-4 mb-4 break-words whitespace-pre-line">
+                {selected.message}
+              </p>
+
+              <div className="flex items-center gap-2 text-xs text-[#6B6880] mb-5">
+                <Clock className="w-3.5 h-3.5" />
+                {fmtFullDate(selected.created_at)}
+                <span className="mx-1">·</span>
+                <span className={selected.is_read ? "text-green-600" : "text-[#D64545]"}>
+                  {selected.is_read ? "✓ Sudah dibaca" : "Baru"}
+                </span>
+              </div>
+
+              <div className="flex gap-2">
+                {link && (
+                  <Link
+                    href={link.href}
+                    className="flex-1 inline-flex items-center justify-center gap-2 bg-[#D64545] hover:bg-[#C23B3B] text-white font-semibold text-sm py-2.5 px-4 rounded-lg transition-colors"
+                  >
+                    <ExternalLink className="w-4 h-4" />
+                    {link.label}
+                  </Link>
+                )}
+                <button
+                  onClick={() => { handleDelete(selected.id); setSelected(null); }}
+                  className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 bg-red-50 hover:bg-red-100 text-[#DC3545] border border-red-200 text-sm font-semibold rounded-lg transition-colors"
+                >
+                  <Trash2 className="w-4 h-4" /> Hapus
+                </button>
+              </div>
+            </div>
+          );
+        })()}
+      </Modal>
     </>
   );
 }
