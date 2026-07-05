@@ -41,17 +41,36 @@ export interface ApiApplication {
   budget_max: number;
 }
 
+export type ApplicationStatus = "pending" | "reviewed" | "accepted" | "rejected" | "expired";
+
 export interface ApiEmployerApplication {
   id: string;
-  status: "pending" | "reviewed" | "accepted" | "rejected" | "expired";
+  status: ApplicationStatus;
   submitted_at: string;
+  cover_letter?: string;
   freelancer_id: string;
   name: string;
   level?: string;
   rating?: number;
+  completed_projects?: number;
   profile_picture_url?: string;
   job_id: string;
   job_title: string;
+}
+
+export interface ApiJobApplicant {
+  id: string;
+  status: ApplicationStatus;
+  submitted_at: string;
+  cover_letter: string;
+  freelancer_id: string;
+  name: string;
+  level?: string;
+  rating?: number;
+  completed_projects?: number;
+  passport_days_completed?: number;
+  skills: string[];
+  badge_count: number;
 }
 
 export interface JobsQuery {
@@ -83,6 +102,12 @@ export const jobsApi = {
 
   employerApplications: (limit = 10) =>
     api.get<ApiResponse<ApiEmployerApplication[]>>(`/applications/employer?limit=${limit}`),
+
+  applicantsForJob: (jobId: string) =>
+    api.get<ApiResponse<ApiJobApplicant[]>>(`/applications/job/${jobId}`),
+
+  updateApplicationStatus: (id: string, status: "reviewed" | "accepted" | "rejected") =>
+    api.put<ApiResponse<null>>(`/applications/${id}/status`, { status }),
 
   create: (data: Partial<ApiJob> & { skills?: string[]; requirements?: string[] }) =>
     api.post<ApiResponse<ApiJob>>("/jobs", data),
