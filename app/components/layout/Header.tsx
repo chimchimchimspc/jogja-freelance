@@ -1,12 +1,13 @@
 "use client";
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Search, Bell, Menu, X } from "lucide-react";
+import { Search, Bell, Menu, X, MessageCircle } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { clsx } from "clsx";
 import { useAuth, type User } from "../../context/AuthContext";
 import { notificationsApi, type Notification } from "../../lib/notifications.api";
+import { chatApi } from "../../lib/chat.api";
 import { assetUrl } from "../../lib/api";
 
 const GUEST_NAV_LINKS = [
@@ -58,6 +59,7 @@ export default function Header() {
   const [notifClosing, setNotifClosing] = useState(false);
   const [search,     setSearch]     = useState("");
   const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [unreadChats, setUnreadChats] = useState(0);
   const pathname  = usePathname();
   const inputRef  = useRef<HTMLInputElement>(null);
   const notifRef  = useRef<HTMLDivElement>(null);
@@ -82,6 +84,23 @@ export default function Header() {
   useEffect(() => {
     fetchNotifications();
   }, [fetchNotifications]);
+
+  // Jumlah pesan chat belum dibaca — refresh tiap 30 detik
+  useEffect(() => {
+    if (!user) return;
+    let active = true;
+    const load = async () => {
+      try {
+        const rows = await chatApi.conversations();
+        if (active) setUnreadChats(rows.reduce((sum, c) => sum + (Number(c.unread_count) || 0), 0));
+      } catch {
+        if (active) setUnreadChats(0);
+      }
+    };
+    load();
+    const t = setInterval(load, 30000);
+    return () => { active = false; clearInterval(t); };
+  }, [user, pathname]);
 
   const handleMarkRead = async (id: string) => {
     try {
@@ -192,6 +211,21 @@ export default function Header() {
 
         {/* Actions */}
         <div className="flex items-center gap-2 flex-shrink-0">
+          {user && (
+            <Link
+              href="/chat"
+              className="relative p-1.5 hover:bg-[#F0F0F0] rounded transition-colors"
+              aria-label="Chat"
+              title="Chat"
+            >
+              <MessageCircle className="w-5 h-5 text-[#1E1B2E]" />
+              {unreadChats > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-1 bg-[#D64545] text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                  {unreadChats > 9 ? "9+" : unreadChats}
+                </span>
+              )}
+            </Link>
+          )}
           {user && (
           <div className="relative" ref={notifRef}>
             <button
