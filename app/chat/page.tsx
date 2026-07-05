@@ -8,6 +8,7 @@ import {
   Phone, Video, MoreVertical, Paperclip, Smile,
 } from "lucide-react";
 import { chatApi, type ApiConversation, type ApiMessage, type ApiError } from "../lib/chat.api";
+import { assetUrl } from "../lib/api";
 import { useAuth } from "../context/AuthContext";
 import { buildDemoData, DEMO_ME_ID } from "../data/chatDemo";
 
@@ -60,11 +61,16 @@ function gradientFor(id: string) {
   return AVATAR_GRADIENTS[sum % AVATAR_GRADIENTS.length];
 }
 
-function Avatar({ name, id, size = "md" }: { name: string; id: string; size?: "sm" | "md" | "lg" }) {
+function Avatar({ name, id, avatar, size = "md" }: { name: string; id: string; avatar?: string | null; size?: "sm" | "md" | "lg" }) {
   const dim = size === "lg" ? "w-11 h-11 text-base" : size === "sm" ? "w-8 h-8 text-xs" : "w-10 h-10 text-sm";
   return (
-    <div className={`${dim} rounded-full bg-gradient-to-br ${gradientFor(id)} flex items-center justify-center text-white font-bold flex-shrink-0 shadow-sm`}>
-      {initials(name)}
+    <div className={`${dim} rounded-full bg-gradient-to-br ${gradientFor(id)} flex items-center justify-center text-white font-bold flex-shrink-0 shadow-sm overflow-hidden`}>
+      {avatar ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={assetUrl(avatar)} alt={name} className="w-full h-full object-cover" />
+      ) : (
+        initials(name)
+      )}
     </div>
   );
 }
@@ -251,7 +257,7 @@ function ChatInner() {
                     }`}
                   >
                     <div className="relative">
-                      <Avatar name={c.other_user_name} id={c.other_user_id} />
+                      <Avatar name={c.other_user_name} id={c.other_user_id} avatar={c.other_user_avatar} />
                       <span className="absolute bottom-0 right-0 w-3 h-3 rounded-full bg-[#22C55E] border-2 border-white" />
                     </div>
                     <div className="flex-1 min-w-0">
@@ -298,7 +304,7 @@ function ChatInner() {
                 <button className="md:hidden text-[#565A5C]" onClick={() => setSelectedId(null)} aria-label="Kembali">
                   <ArrowLeft className="w-5 h-5" />
                 </button>
-                <Avatar name={selected?.other_user_name || "?"} id={selected?.other_user_id || "x"} size="lg" />
+                <Avatar name={selected?.other_user_name || "?"} id={selected?.other_user_id || "x"} avatar={selected?.other_user_avatar} size="lg" />
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-bold text-[#232F3E] truncate">{selected?.other_user_name || "Percakapan"}</p>
                   <p className="text-xs text-[#22C55E] flex items-center gap-1">
