@@ -31,12 +31,12 @@ export default function CTASection() {
           Siap Mulai Perjalanan Freelance-mu di Jogja?
         </h2>
         <p className="text-[#6B6880] text-lg mb-8 max-w-xl mx-auto">
-          Daftar gratis, mulai panduan 30 hari, dan temukan peluang pertamamu hari ini.
+          Masuk ke akunmu — atau daftar gratis — lalu mulai panduan 30 hari dan temukan peluang pertamamu hari ini.
         </p>
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
-          <Link href="/auth/register">
+          <Link href="/auth/login">
             <Button size="lg" className="min-w-48">
-              Daftar Gratis — Mulai Sekarang
+              Masuk — Mulai Sekarang
             </Button>
           </Link>
           <Link href="/jobs">

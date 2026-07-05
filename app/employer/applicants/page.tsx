@@ -5,30 +5,33 @@ import Header from "../../components/layout/Header";
 import Footer from "../../components/layout/Footer";
 import Toast from "../../components/ui/Toast";
 import {
-  UserRoundSearch, CheckCircle, XCircle, Eye, Loader2, Briefcase, Star, MessageCircle,
+  UserRoundSearch, CheckCircle, XCircle, Eye, Loader2, Briefcase, Star, MessageCircle, ClipboardCheck,
 } from "lucide-react";
 import Link from "next/link";
 import { useAuth } from "../../context/AuthContext";
 import { jobsApi, type ApiEmployerApplication, type ApplicationStatus } from "../../lib/jobs.api";
 import { chatApi } from "../../lib/chat.api";
 import { assetUrl } from "../../lib/api";
+import CompleteReviewModal from "../../components/employer/CompleteReviewModal";
 
 type Tab = "" | ApplicationStatus;
 
 const TABS: { key: Tab; label: string }[] = [
-  { key: "",         label: "Semua" },
-  { key: "pending",  label: "Baru" },
-  { key: "reviewed", label: "Direview" },
-  { key: "accepted", label: "Diterima" },
-  { key: "rejected", label: "Ditolak" },
+  { key: "",          label: "Semua" },
+  { key: "pending",   label: "Baru" },
+  { key: "reviewed",  label: "Direview" },
+  { key: "accepted",  label: "Diterima" },
+  { key: "completed", label: "Selesai" },
+  { key: "rejected",  label: "Ditolak" },
 ];
 
 const STATUS_BADGE: Record<string, { label: string; cls: string }> = {
-  pending:  { label: "Baru",     cls: "bg-blue-100 text-blue-700" },
-  reviewed: { label: "Direview", cls: "bg-yellow-100 text-yellow-700" },
-  accepted: { label: "Diterima", cls: "bg-green-100 text-green-700" },
-  rejected: { label: "Ditolak",  cls: "bg-red-100 text-red-700" },
-  expired:  { label: "Expired",  cls: "bg-gray-100 text-gray-500" },
+  pending:   { label: "Baru",     cls: "bg-blue-100 text-blue-700" },
+  reviewed:  { label: "Direview", cls: "bg-yellow-100 text-yellow-700" },
+  accepted:  { label: "Diterima", cls: "bg-green-100 text-green-700" },
+  completed: { label: "Selesai",  cls: "bg-purple-100 text-purple-700" },
+  rejected:  { label: "Ditolak",  cls: "bg-red-100 text-red-700" },
+  expired:   { label: "Expired",  cls: "bg-gray-100 text-gray-500" },
 };
 
 const levelBadge: Record<string, string> = {
@@ -50,6 +53,9 @@ export default function ApplicantsPage() {
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState<string | null>(null);
   const [chatting, setChatting] = useState<string | null>(null);
+  const [reviewTarget, setReviewTarget] = useState<{
+    applicationId: string; freelancerId: string; name: string; jobId?: string; jobTitle?: string;
+  } | null>(null);
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
 
   const handleChat = async (freelancerId: string) => {
@@ -161,7 +167,7 @@ export default function ApplicantsPage() {
               {filtered.map((a) => {
                 const st = STATUS_BADGE[a.status] ?? STATUS_BADGE.pending;
                 const busy = updating === a.id;
-                const decided = a.status === "accepted" || a.status === "rejected";
+                const decided = a.status === "accepted" || a.status === "rejected" || a.status === "completed";
                 return (
                   <div key={a.id} className="bg-white border border-[#EAE6F5] rounded-xl p-5">
                     <div className="flex items-start gap-4">
@@ -234,12 +240,25 @@ export default function ApplicantsPage() {
                           )}
                           {busy && <Loader2 className="w-4 h-4 animate-spin text-[#D64545]" />}
                         </>
-                      ) : (
-                        <p className="text-xs text-[#6B6880] italic">
-                          {a.status === "accepted"
-                            ? "✓ Pelamar sudah diterima — notifikasi terkirim ke freelancer"
-                            : "✕ Pelamar sudah ditolak"}
+                      ) : a.status === "accepted" ? (
+                        <button
+                          onClick={() => setReviewTarget({
+                            applicationId: a.id,
+                            freelancerId: a.freelancer_id,
+                            name: a.name,
+                            jobId: a.job_id,
+                            jobTitle: a.job_title,
+                          })}
+                          className="flex items-center gap-1.5 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm font-semibold rounded-lg transition-colors"
+                        >
+                          <ClipboardCheck className="w-4 h-4" /> Tandai Selesai & Ulas
+                        </button>
+                      ) : a.status === "completed" ? (
+                        <p className="text-xs text-purple-700 italic">
+                          🏁 Pekerjaan selesai — ulasan sudah masuk ke profil freelancer
                         </p>
+                      ) : (
+                        <p className="text-xs text-[#6B6880] italic">✕ Pelamar sudah ditolak</p>
                       )}
                       <button
                         onClick={() => handleChat(a.freelancer_id)}
@@ -266,6 +285,17 @@ export default function ApplicantsPage() {
         </div>
       </main>
       <Footer />
+
+      <CompleteReviewModal
+        isOpen={!!reviewTarget}
+        onClose={() => setReviewTarget(null)}
+        applicant={reviewTarget}
+        onDone={(appId) => {
+          setApplicants((prev) => prev.map((a) => (a.id === appId ? { ...a, status: "completed" } : a)));
+          setToast({ message: "Pekerjaan selesai! Ulasan terkirim ke profil freelancer 🎉", type: "success" });
+        }}
+        onError={(msg) => setToast({ message: msg, type: "error" })}
+      />
 
       {toast && (
         <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} duration={4000} />

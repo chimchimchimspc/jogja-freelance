@@ -1,11 +1,13 @@
 "use client";
-import { useState } from "react";
+import { useState, useRef } from "react";
 import Header from "../../components/layout/Header";
 import Footer from "../../components/layout/Footer";
 import Toast from "../../components/ui/Toast";
-import { Briefcase, CheckCircle, ChevronLeft, X } from "lucide-react";
+import MapPicker from "../../components/ui/MapPicker";
+import { Briefcase, CheckCircle, ChevronLeft, X, Upload } from "lucide-react";
 import Link from "next/link";
 import { jobsApi } from "../../lib/jobs.api";
+import { uploadsApi } from "../../lib/uploads.api";
 import { useAuth } from "../../context/AuthContext";
 
 const CATEGORIES = [
@@ -48,12 +50,33 @@ const INIT: FormData = {
 
 export default function PostJobPage() {
   const { user } = useAuth();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [form, setForm]         = useState<FormData>(INIT);
   const [skillInput, setSkillInput] = useState("");
   const [submitted, setSubmitted]   = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [toast, setToast]           = useState<string | null>(null);
   const [errors, setErrors]         = useState<Partial<Record<keyof FormData, string>>>({});
+
+  // Foto & lokasi
+  const [photoFile, setPhotoFile]   = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string>("");
+  const [photoError, setPhotoError] = useState("");
+  const [address, setAddress]       = useState("");
+  const [lat, setLat]               = useState<number | null>(null);
+  const [lng, setLng]               = useState<number | null>(null);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) { setPhotoError("Ukuran maksimal 5MB"); return; }
+    if (!file.type.startsWith("image/")) { setPhotoError("Hanya file gambar"); return; }
+    setPhotoError("");
+    setPhotoFile(file);
+    const reader = new FileReader();
+    reader.onload = (ev) => setPhotoPreview(ev.target?.result as string);
+    reader.readAsDataURL(file);
+  };
 
   const set = <K extends keyof FormData>(k: K, v: FormData[K]) =>
     setForm((p) => ({ ...p, [k]: v }));
@@ -77,6 +100,7 @@ export default function PostJobPage() {
     if (!form.budgetMin || +form.budgetMin < 100000) e.budgetMin = "Budget minimal Rp 100.000";
     if (!form.budgetMax || +form.budgetMax < +form.budgetMin)
                                     e.budgetMax = "Budget maks harus lebih besar dari min";
+    if (+form.budgetMax > 1_000_000_000) e.budgetMax = "Budget maksimal Rp 1 miliar";
     if (!form.deadlineDays || +form.deadlineDays < 3) e.deadlineDays = "Minimal 3 hari";
     setErrors(e);
     return Object.keys(e).length === 0;
@@ -87,6 +111,12 @@ export default function PostJobPage() {
     if (!validate()) return;
     setSubmitting(true);
     try {
+      let image_url: string | undefined;
+      if (photoFile) {
+        const up = await uploadsApi.image(photoFile);
+        image_url = up.data.url;
+      }
+
       await jobsApi.create({
         title: form.title,
         category: form.category,
@@ -99,6 +129,10 @@ export default function PostJobPage() {
         experience_level: form.experienceLevel,
         contact_email: user?.email,
         skills: form.skills,
+        image_url,
+        location: address || undefined,
+        latitude: lat ?? undefined,
+        longitude: lng ?? undefined,
       });
       setSubmitted(true);
       setToast("Lowongan berhasil dipasang! Menunggu review admin (1–2 hari kerja).");
@@ -403,6 +437,59 @@ export default function PostJobPage() {
                     ))}
                   </div>
                 </div>
+              </div>
+            </div>
+
+            {/* Foto & Lokasi */}
+            <div className="bg-white border border-[#EAE6F5] rounded-xl p-6">
+              <h2 className="font-bold text-[#1E1B2E] mb-1">Foto & Lokasi</h2>
+              <p className="text-xs text-[#6B6880] mb-4">
+                Foto membantu lowongan lebih menarik. Alamat & pin peta terutama untuk Onsite/Hybrid.
+              </p>
+
+              {/* Foto lowongan */}
+              <div className="mb-5">
+                <label className="block text-sm font-semibold text-[#1E1B2E] mb-2">Foto Lowongan (Opsional)</label>
+                <div className="flex items-start gap-4">
+                  {photoPreview ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={photoPreview} alt="Preview" className="w-32 h-20 rounded-lg object-cover border border-[#EAE6F5]" />
+                  ) : (
+                    <div className="w-32 h-20 rounded-lg bg-[#F8F6FF] border-2 border-dashed border-[#D5D0E8] flex items-center justify-center text-2xl">
+                      📷
+                    </div>
+                  )}
+                  <div className="flex-1">
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="flex items-center gap-2 px-4 py-2 bg-[#F8F6FF] border border-[#EAE6F5] rounded-lg cursor-pointer hover:bg-[#EAE6F5] transition-colors text-sm font-semibold text-[#1E1B2E]"
+                    >
+                      <Upload className="w-4 h-4" /> Pilih Foto
+                    </button>
+                    <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileChange} className="hidden" />
+                    <p className="text-xs text-[#6B6880] mt-2">Max 5MB. Format: JPG, PNG, WebP</p>
+                    {photoError && <p className="text-xs text-red-500 mt-1">{photoError}</p>}
+                  </div>
+                </div>
+              </div>
+
+              {/* Alamat */}
+              <div className="mb-4">
+                <label className="block text-sm font-semibold text-[#1E1B2E] mb-1.5">Alamat Lokasi Kerja (Opsional)</label>
+                <input
+                  type="text"
+                  value={address}
+                  onChange={(e) => setAddress(e.target.value)}
+                  placeholder="Contoh: Jl. Malioboro No. 10, Yogyakarta"
+                  className="w-full px-3.5 py-2.5 text-sm border border-[#EAE6F5] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#D64545]/30"
+                />
+              </div>
+
+              {/* Pin peta */}
+              <div>
+                <label className="block text-sm font-semibold text-[#1E1B2E] mb-2">Pin Lokasi di Peta</label>
+                <MapPicker latitude={lat} longitude={lng} onChange={(la, lo) => { setLat(la); setLng(lo); }} />
               </div>
             </div>
 

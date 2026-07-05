@@ -159,7 +159,7 @@ export default function HeroSection() {
 
           {/* Main CTA Buttons */}
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link href="/auth/register?role=freelancer">
+            <Link href="/auth/login">
               <Button
                 size="lg"
                 className="min-w-56 bg-[#D64545] hover:bg-[#C23B3B] text-white font-bold"

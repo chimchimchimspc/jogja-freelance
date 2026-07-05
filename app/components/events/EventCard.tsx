@@ -3,6 +3,7 @@ import Link from "next/link";
 import Badge from "../ui/Badge";
 import Button from "../ui/Button";
 import { type Event, type EventType, EVENT_TYPES, formatDate, formatTime, isEventFull, isEventPast } from "../../data/events";
+import { assetUrl } from "../../lib/api";
 
 interface EventCardProps {
   event: Event;
@@ -30,15 +31,24 @@ export default function EventCard({ event }: EventCardProps) {
 
   return (
     <div className={`bg-white border border-[#E7E7E7] rounded-lg overflow-hidden transition-all duration-200 flex flex-col h-full min-h-[420px] ${past ? "opacity-70" : "hover:shadow-lg hover:-translate-y-0.5"}`}>
-      {/* Header */}
-      <div className={`${cardGradient} p-4 flex items-start justify-between gap-2 ${past ? "opacity-80" : ""}`}>
-        <div className="flex-1 min-w-0">
-          <h3 className="text-lg font-bold text-white mb-1 line-clamp-2">{event.title}</h3>
-          <p className="text-sm text-white/70 line-clamp-1">{event.organizerName}</p>
-        </div>
-        <div className="flex gap-2 flex-shrink-0">
-          {past && <Badge label="Selesai" color="gray" />}
-          <Badge label={type.label} color={badgeColors[event.type]} />
+      {/* Header — foto dari database bila ada, fallback gradasi warna tipe */}
+      <div className={`relative ${event.image ? "" : cardGradient} ${past ? "opacity-80" : ""}`}>
+        {event.image && (
+          <>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={assetUrl(event.image)} alt={event.title} className="absolute inset-0 w-full h-full object-cover" />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-black/20" />
+          </>
+        )}
+        <div className="relative p-4 flex items-start justify-between gap-2 min-h-[92px]">
+          <div className="flex-1 min-w-0">
+            <h3 className="text-lg font-bold text-white mb-1 line-clamp-2">{event.title}</h3>
+            <p className="text-sm text-white/70 line-clamp-1">{event.organizerName}</p>
+          </div>
+          <div className="flex gap-2 flex-shrink-0">
+            {past && <Badge label="Selesai" color="gray" />}
+            <Badge label={type.label} color={badgeColors[event.type]} />
+          </div>
         </div>
       </div>
 

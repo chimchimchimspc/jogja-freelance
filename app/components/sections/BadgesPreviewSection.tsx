@@ -128,7 +128,7 @@ export default function BadgesPreviewSection() {
         </div>
 
         <div className="text-center mt-8">
-          <Link href="/auth/register">
+          <Link href="/auth/login">
             <Button size="lg">Mulai Kumpulkan Badge Sekarang</Button>
           </Link>
         </div>

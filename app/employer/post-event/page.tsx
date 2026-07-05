@@ -1,11 +1,13 @@
 "use client";
-import { useState } from "react";
+import { useState, useRef } from "react";
 import Header from "../../components/layout/Header";
 import Footer from "../../components/layout/Footer";
 import Toast from "../../components/ui/Toast";
-import { CalendarDays, CheckCircle, ChevronLeft, X } from "lucide-react";
+import MapPicker from "../../components/ui/MapPicker";
+import { CalendarDays, CheckCircle, ChevronLeft, X, Upload } from "lucide-react";
 import Link from "next/link";
 import { eventsApi } from "../../lib/events.api";
+import { uploadsApi } from "../../lib/uploads.api";
 import { useAuth } from "../../context/AuthContext";
 
 const EVENT_TYPES = [
@@ -41,12 +43,32 @@ const INIT: FormData = {
 
 export default function PostEventPage() {
   const { user } = useAuth();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [form, setForm]             = useState<FormData>(INIT);
   const [skillInput, setSkillInput] = useState("");
   const [submitted, setSubmitted]   = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [toast, setToast]           = useState<string | null>(null);
   const [errors, setErrors]         = useState<Partial<Record<keyof FormData, string>>>({});
+
+  // Foto & pin lokasi
+  const [photoFile, setPhotoFile]   = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string>("");
+  const [photoError, setPhotoError] = useState("");
+  const [lat, setLat]               = useState<number | null>(null);
+  const [lng, setLng]               = useState<number | null>(null);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) { setPhotoError("Ukuran maksimal 5MB"); return; }
+    if (!file.type.startsWith("image/")) { setPhotoError("Hanya file gambar"); return; }
+    setPhotoError("");
+    setPhotoFile(file);
+    const reader = new FileReader();
+    reader.onload = (ev) => setPhotoPreview(ev.target?.result as string);
+    reader.readAsDataURL(file);
+  };
 
   const set = <K extends keyof FormData>(k: K, v: FormData[K]) =>
     setForm((p) => ({ ...p, [k]: v }));
@@ -71,6 +93,7 @@ export default function PostEventPage() {
     if (!form.locationName.trim())      e.locationName = "Nama lokasi wajib diisi";
     if (!form.attendeeLimit || +form.attendeeLimit < 1) e.attendeeLimit = "Minimal 1 peserta";
     if (!form.isFree && (!form.price || +form.price < 1000)) e.price = "Isi harga tiket";
+    if (!form.isFree && +form.price > 50_000_000) e.price = "Harga tiket maksimal Rp 50 juta";
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -80,6 +103,12 @@ export default function PostEventPage() {
     if (!validate()) return;
     setSubmitting(true);
     try {
+      let image_url: string | undefined;
+      if (photoFile) {
+        const up = await uploadsApi.image(photoFile);
+        image_url = up.data.url;
+      }
+
       await eventsApi.create({
         title: form.title,
         description: form.description,
@@ -89,6 +118,9 @@ export default function PostEventPage() {
         duration_minutes: +form.durationMinutes,
         location_name: form.locationName,
         location_address: form.locationAddress || undefined,
+        latitude: lat ?? undefined,
+        longitude: lng ?? undefined,
+        image_url,
         organizer_name: user?.name,
         attendee_limit: +form.attendeeLimit,
         is_free: form.isFree,
@@ -289,6 +321,38 @@ export default function PostEventPage() {
                     placeholder="Alamat lengkap lokasi (opsional)"
                     className="w-full px-3.5 py-2.5 text-sm border border-[#EAE6F5] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#D64545]/30"
                   />
+                </div>
+                <div className="sm:col-span-2">
+                  <label className="block text-sm font-semibold text-[#1E1B2E] mb-2">Pin Lokasi di Peta</label>
+                  <MapPicker latitude={lat} longitude={lng} onChange={(la, lo) => { setLat(la); setLng(lo); }} />
+                </div>
+              </div>
+            </div>
+
+            {/* Foto event */}
+            <div className="bg-white border border-[#EAE6F5] rounded-xl p-6">
+              <h2 className="font-bold text-[#1E1B2E] mb-1">Foto Event</h2>
+              <p className="text-xs text-[#6B6880] mb-4">Foto akan tampil di kartu & halaman detail event (opsional).</p>
+              <div className="flex items-start gap-4">
+                {photoPreview ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={photoPreview} alt="Preview" className="w-32 h-20 rounded-lg object-cover border border-[#EAE6F5]" />
+                ) : (
+                  <div className="w-32 h-20 rounded-lg bg-[#F8F6FF] border-2 border-dashed border-[#D5D0E8] flex items-center justify-center text-2xl">
+                    📷
+                  </div>
+                )}
+                <div className="flex-1">
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="flex items-center gap-2 px-4 py-2 bg-[#F8F6FF] border border-[#EAE6F5] rounded-lg cursor-pointer hover:bg-[#EAE6F5] transition-colors text-sm font-semibold text-[#1E1B2E]"
+                  >
+                    <Upload className="w-4 h-4" /> Pilih Foto
+                  </button>
+                  <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileChange} className="hidden" />
+                  <p className="text-xs text-[#6B6880] mt-2">Max 5MB. Format: JPG, PNG, WebP</p>
+                  {photoError && <p className="text-xs text-red-500 mt-1">{photoError}</p>}
                 </div>
               </div>
             </div>

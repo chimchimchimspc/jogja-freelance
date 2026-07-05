@@ -17,11 +17,12 @@ const statusConfig: Record<ApiApplication["status"], {
   color: "blue" | "green" | "red" | "gray" | "orange";
   icon: typeof CheckCircle;
 }> = {
-  pending:  { label: "Menunggu",    color: "blue",   icon: Clock },
-  reviewed: { label: "Ditinjau",   color: "orange",  icon: Eye },
-  accepted: { label: "Diterima",   color: "green",   icon: CheckCircle },
-  rejected: { label: "Ditolak",    color: "red",     icon: XCircle },
-  expired:  { label: "Kedaluwarsa",color: "gray",    icon: RotateCcw },
+  pending:   { label: "Menunggu",    color: "blue",   icon: Clock },
+  reviewed:  { label: "Ditinjau",   color: "orange",  icon: Eye },
+  accepted:  { label: "Diterima",   color: "green",   icon: CheckCircle },
+  completed: { label: "Selesai ✓",  color: "green",   icon: CheckCircle },
+  rejected:  { label: "Ditolak",    color: "red",     icon: XCircle },
+  expired:   { label: "Kedaluwarsa",color: "gray",    icon: RotateCcw },
 };
 
 function formatBudget(amount: number) {
@@ -54,7 +55,7 @@ export default function ApplicationsPage() {
   const filtered = applications.filter((a) => {
     if (activeTab === "semua")    return true;
     if (activeTab === "pending")  return a.status === "pending" || a.status === "reviewed";
-    if (activeTab === "accepted") return a.status === "accepted";
+    if (activeTab === "accepted") return a.status === "accepted" || a.status === "completed";
     if (activeTab === "rejected") return a.status === "rejected" || a.status === "expired";
     return true;
   });
@@ -62,7 +63,7 @@ export default function ApplicationsPage() {
   const counts = {
     semua:    applications.length,
     pending:  applications.filter((a) => a.status === "pending" || a.status === "reviewed").length,
-    accepted: applications.filter((a) => a.status === "accepted").length,
+    accepted: applications.filter((a) => a.status === "accepted" || a.status === "completed").length,
     rejected: applications.filter((a) => a.status === "rejected" || a.status === "expired").length,
   };
 

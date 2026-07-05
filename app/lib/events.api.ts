@@ -13,6 +13,9 @@ export interface ApiEvent {
   latitude?: number;
   longitude?: number;
   organizer_name: string;
+  organizer_company?: string;
+  organizer_logo?: string;
+  organizer_industry?: string;
   image_url?: string;
   attendee_limit: number;
   attendee_count: number;
@@ -36,6 +39,18 @@ export const eventsApi = {
   get: (id: string) => api.get<ApiResponse<ApiEvent>>(`/events/${id}`),
 
   mine: () => api.get<ApiResponse<(ApiEvent & { status: string; created_at: string })[]>>("/events/mine"),
+
+  attended: () =>
+    api.get<ApiResponse<Array<{
+      id: string;
+      title: string;
+      type: ApiEvent["type"];
+      event_date: string;
+      location_name?: string;
+      organizer_name?: string;
+      checked_in: boolean;
+      rsvp_at: string;
+    }>>>("/events/attended"),
 
   attendees: (eventId: string) =>
     api.get<ApiResponse<{
@@ -62,6 +77,8 @@ export const eventsApi = {
     duration_minutes?: number;
     location_name?: string;
     location_address?: string;
+    latitude?: number;
+    longitude?: number;
     organizer_name?: string;
     image_url?: string;
     attendee_limit?: number;

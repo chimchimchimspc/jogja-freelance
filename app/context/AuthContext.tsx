@@ -26,6 +26,7 @@ interface AuthContextType {
     skills?: string[];
     company_name?: string;
   }) => Promise<void>;
+  loginWithGoogle: (payload: { credential?: string; email?: string; name?: string }) => Promise<void>;
   logout: () => void;
   updateUser: (patch: Partial<User>) => void;
 }
@@ -52,6 +53,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const stored = getStoredUser();
     if (stored) setUser(stored);
     setIsLoading(false);
+
+    // Sinkronkan data terbaru dari server (foto profil, nama, dsb)
+    // agar localStorage tidak menyimpan data usang
+    if (stored) {
+      authApi
+        .me()
+        .then((res) => {
+          const u = toUser(res.data);
+          setStoredUser(u);
+          setUser(u);
+        })
+        .catch(() => {
+          // token kadaluarsa / server mati — biarkan data tersimpan apa adanya
+        });
+    }
   }, []);
 
   const login = async (email: string, password: string) => {
@@ -88,6 +104,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const loginWithGoogle = async (payload: { credential?: string; email?: string; name?: string }) => {
+    setIsLoading(true);
+    try {
+      const res = await authApi.google(payload);
+      const u = toUser(res.data.user);
+      setToken(res.data.token);
+      setStoredUser(u);
+      setUser(u);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const logout = () => {
     clearToken();
     setUser(null);
@@ -103,7 +132,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, register, logout, updateUser }}>
+    <AuthContext.Provider value={{ user, isLoading, login, register, loginWithGoogle, logout, updateUser }}>
       {children}
     </AuthContext.Provider>
   );

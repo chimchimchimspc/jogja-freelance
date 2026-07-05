@@ -12,15 +12,14 @@ import { assetUrl } from "../../lib/api";
 
 const GUEST_NAV_LINKS = [
   { href: "/jobs",     label: "Lowongan" },
-  { href: "/passport", label: "Panduan" },
   { href: "/events",   label: "Events" },
-  { href: "/employer", label: "Employer" },
+  { href: "/passport", label: "Panduan" },
 ];
 
 const FREELANCER_NAV_LINKS = [
   { href: "/jobs",     label: "Lowongan" },
-  { href: "/passport", label: "Panduan" },
   { href: "/events",   label: "Events" },
+  { href: "/passport", label: "Panduan" },
 ];
 
 const RECRUITER_NAV_LINKS = [

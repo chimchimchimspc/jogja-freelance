@@ -9,8 +9,10 @@ import ApplyModal from "../../components/jobs/ApplyModal";
 import Toast from "../../components/ui/Toast";
 import { ArrowLeft, DollarSign, Clock, Eye, Users, MapPin, Mail, Phone, CheckCircle, AlertCircle, Loader2 } from "lucide-react";
 import Link from "next/link";
-import { jobsApi, type ApiJob } from "../../lib/jobs.api";
+import { jobsApi, type ApiJob, type ApiApplication } from "../../lib/jobs.api";
 import LocationMap from "../../components/ui/LocationMap";
+import { useAuth } from "../../context/AuthContext";
+import { assetUrl } from "../../lib/api";
 
 const categoryColor: Record<string, "blue" | "orange" | "green" | "gray"> = {
   "Web Development":    "blue",
@@ -30,10 +32,11 @@ function formatBudget(amount: number) {
 
 export default function JobDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
+  const { user } = useAuth();
   const [job, setJob]           = useState<ApiJob | null>(null);
   const [related, setRelated]   = useState<ApiJob[]>([]);
   const [loading, setLoading]   = useState(true);
-  const [applied, setApplied]   = useState(false);
+  const [myApp, setMyApp]       = useState<ApiApplication | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [toast, setToast]       = useState<string | null>(null);
 
@@ -52,6 +55,19 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
       }
     })();
   }, [id]);
+
+  // Cek apakah user sudah pernah melamar lowongan ini
+  useEffect(() => {
+    if (!user || user.role !== "freelancer") return;
+    (async () => {
+      try {
+        const res = await jobsApi.myApplications({ limit: 100 });
+        setMyApp(res.data.find((a) => a.job_id === id) ?? null);
+      } catch {
+        setMyApp(null);
+      }
+    })();
+  }, [id, user]);
 
   if (loading) {
     return (
@@ -86,6 +102,12 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
 
           <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6">
             <div className="space-y-4">
+              {job.image_url && (
+                <div className="w-full h-56 sm:h-72 rounded-lg overflow-hidden border border-[#E7E7E7]">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={assetUrl(job.image_url)} alt={job.title} className="w-full h-full object-cover" />
+                </div>
+              )}
               <div className="bg-white border border-[#E7E7E7] rounded-lg p-6">
                 <div className="flex items-start justify-between gap-4 mb-4">
                   <div>
@@ -165,17 +187,35 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
             </div>
 
             <div className="space-y-4">
-              <div className="bg-white border border-[#E7E7E7] rounded-lg p-5 sticky top-24">
+              <div className="bg-white border border-[#E7E7E7] rounded-lg p-5">
                 <div className="text-center mb-4">
                   <p className="text-2xl font-bold text-[#232F3E]">{formatBudget(budget)}</p>
                   <p className="text-xs text-[#565A5C]">Budget proyek</p>
                 </div>
 
-                {applied ? (
+                {myApp?.status === "accepted" ? (
                   <div className="text-center py-3 bg-green-50 border border-green-200 rounded-lg mb-4">
-                    <CheckCircle className="w-5 h-5 text-[#12A54D] mx-auto mb-1" />
-                    <p className="text-sm font-semibold text-[#12A54D]">Lamaran Terkirim!</p>
-                    <p className="text-xs text-[#565A5C] mt-1">Tunggu respon dari employer</p>
+                    <CheckCircle className="w-5 h-5 text-green-600 mx-auto mb-1" />
+                    <p className="text-sm font-semibold text-green-700">🎉 Lamaran Anda Diterima!</p>
+                    <p className="text-xs text-[#565A5C] mt-1">
+                      Employer akan menghubungi Anda — cek chat & notifikasi
+                    </p>
+                  </div>
+                ) : myApp?.status === "rejected" ? (
+                  <div className="text-center py-3 bg-gray-50 border border-gray-200 rounded-lg mb-4">
+                    <AlertCircle className="w-5 h-5 text-gray-500 mx-auto mb-1" />
+                    <p className="text-sm font-semibold text-gray-600">Lamaran Tidak Diterima</p>
+                    <p className="text-xs text-[#565A5C] mt-1">
+                      Jangan menyerah — masih banyak lowongan lain untukmu
+                    </p>
+                  </div>
+                ) : myApp ? (
+                  <div className="text-center py-3 bg-blue-50 border border-blue-200 rounded-lg mb-4">
+                    <CheckCircle className="w-5 h-5 text-[#146EB4] mx-auto mb-1" />
+                    <p className="text-sm font-semibold text-[#146EB4]">Lamaran Terkirim!</p>
+                    <p className="text-xs text-[#565A5C] mt-1">
+                      Status: {myApp.status === "reviewed" ? "Sedang direview" : "Menunggu review"} — pantau di Lamaranku
+                    </p>
                   </div>
                 ) : (
                   <Button fullWidth size="lg" onClick={() => setShowModal(true)} className="mb-3">
@@ -211,12 +251,20 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
               <div className="bg-white border border-[#E7E7E7] rounded-lg p-5">
                 <h4 className="text-sm font-bold text-[#232F3E] mb-3">Tentang Employer</h4>
                 <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-lg bg-[#232F3E] flex items-center justify-center text-white font-bold">
-                    {job.company.charAt(0)}
+                  {/* Logo dari profil pengelola */}
+                  <div className="w-12 h-12 rounded-lg bg-[#D64545] flex items-center justify-center text-white font-bold overflow-hidden flex-shrink-0">
+                    {job.company_logo ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={assetUrl(job.company_logo)} alt={job.company} className="w-full h-full object-cover" />
+                    ) : (
+                      job.company?.charAt(0) ?? "?"
+                    )}
                   </div>
                   <div>
                     <p className="text-sm font-semibold text-[#232F3E]">{job.company}</p>
-                    <p className="text-xs text-[#565A5C]">Verified Employer</p>
+                    <p className="text-xs text-[#565A5C]">
+                      {job.company_industry || "Verified Employer"}
+                    </p>
                   </div>
                 </div>
                 <div className="mt-3 text-xs text-[#565A5C] space-y-1">
@@ -276,7 +324,7 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
         isOpen={showModal}
         onClose={() => setShowModal(false)}
         onSuccess={() => {
-          setApplied(true);
+          setMyApp({ job_id: id, status: "pending" } as ApiApplication);
           setShowModal(false);
           setToast("Lamaran berhasil dikirim! Employer akan menghubungi Anda.");
         }}

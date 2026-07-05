@@ -6,6 +6,7 @@ import Button from "../ui/Button";
 import Toast from "../ui/Toast";
 import Link from "next/link";
 import { useAuth } from "../../context/AuthContext";
+import GoogleLoginButton from "./GoogleLoginButton";
 
 export default function LoginForm() {
   const router = useRouter();
@@ -76,6 +77,11 @@ export default function LoginForm() {
         <Button type="submit" fullWidth size="lg" loading={loading}>
           Masuk
         </Button>
+
+        <GoogleLoginButton
+          redirectTo={redirectTo}
+          onError={(msg) => setToast({ message: msg, type: "error" })}
+        />
 
         {toast && (
           <Toast

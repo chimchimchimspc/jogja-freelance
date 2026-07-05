@@ -12,6 +12,7 @@ import { profileApi, type ApiProfile } from "../lib/profile.api";
 import type { UserProfile } from "../data/profile";
 import { useAuth } from "../context/AuthContext";
 import EmployerProfileView from "../components/profile/EmployerProfileView";
+import ReviewList from "../components/profile/ReviewList";
 
 function adaptProfile(p: ApiProfile): UserProfile {
   return {
@@ -156,6 +157,11 @@ export default function ProfilePage() {
           {/* Badge Grid */}
           <div className="mt-6">
             <BadgeGrid earnedBadges={profile.earnedBadges} />
+          </div>
+
+          {/* Ulasan dari employer */}
+          <div className="mt-6">
+            <ReviewList userId={profile.id} />
           </div>
 
           {/* Project Statistics */}

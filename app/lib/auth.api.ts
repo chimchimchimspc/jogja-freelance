@@ -42,6 +42,10 @@ export const authApi = {
     company_name?: string;
   }) => api.post<ApiResponse<RegisterResponse>>("/auth/register", data),
 
+  // Mode asli: kirim { credential }. Mode demo (tanpa Client ID): kirim { email, name }.
+  google: (payload: { credential?: string; email?: string; name?: string }) =>
+    api.post<ApiResponse<LoginResponse>>("/auth/google", payload),
+
   me: () => api.get<ApiResponse<AuthUser>>("/auth/me"),
 
   logout: () => api.post<ApiResponse<null>>("/auth/logout", {}),

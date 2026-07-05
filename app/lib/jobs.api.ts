@@ -4,6 +4,9 @@ export interface ApiJob {
   id: string;
   title: string;
   company: string;
+  company_logo?: string;
+  company_industry?: string;
+  employer_id?: string;
   category: string;
   description: string;
   budget_min: number;
@@ -14,6 +17,7 @@ export interface ApiJob {
   location: string;
   latitude?: number;
   longitude?: number;
+  image_url?: string;
   location_type: "Remote" | "Onsite" | "Hybrid";
   experience_level: "Junior" | "Mid" | "Senior";
   contact_whatsapp?: string;
@@ -33,7 +37,7 @@ export interface ApiApplication {
   company: string;
   category: string;
   cover_letter: string;
-  status: "pending" | "reviewed" | "accepted" | "rejected" | "expired";
+  status: ApplicationStatus;
   submitted_at: string;
   reviewed_at?: string;
   expires_at: string;
@@ -41,7 +45,7 @@ export interface ApiApplication {
   budget_max: number;
 }
 
-export type ApplicationStatus = "pending" | "reviewed" | "accepted" | "rejected" | "expired";
+export type ApplicationStatus = "pending" | "reviewed" | "accepted" | "rejected" | "expired" | "completed";
 
 export interface ApiEmployerApplication {
   id: string;
@@ -106,7 +110,7 @@ export const jobsApi = {
   applicantsForJob: (jobId: string) =>
     api.get<ApiResponse<ApiJobApplicant[]>>(`/applications/job/${jobId}`),
 
-  updateApplicationStatus: (id: string, status: "reviewed" | "accepted" | "rejected") =>
+  updateApplicationStatus: (id: string, status: "reviewed" | "accepted" | "rejected" | "completed") =>
     api.put<ApiResponse<null>>(`/applications/${id}/status`, { status }),
 
   create: (data: Partial<ApiJob> & { skills?: string[]; requirements?: string[] }) =>

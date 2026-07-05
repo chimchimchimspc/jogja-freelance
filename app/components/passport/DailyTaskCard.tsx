@@ -1,6 +1,7 @@
 "use client";
-import { Clock, CheckCircle, ChevronRight, Lightbulb } from "lucide-react";
+import { Clock, CheckCircle, ChevronRight, Lightbulb, ArrowRight } from "lucide-react";
 import { useState } from "react";
+import Link from "next/link";
 import Button from "../ui/Button";
 import { type DayEntry, PHASE_COLORS } from "../../data/passport";
 import { clsx } from "clsx";
@@ -9,9 +10,10 @@ interface DailyTaskCardProps {
   entry: DayEntry;
   isCompleted: boolean;
   onComplete: () => void;
+  action?: { href: string; label: string };
 }
 
-export default function DailyTaskCard({ entry, isCompleted, onComplete }: DailyTaskCardProps) {
+export default function DailyTaskCard({ entry, isCompleted, onComplete, action }: DailyTaskCardProps) {
   const [showTips, setShowTips] = useState(false);
   const [loading, setLoading] = useState(false);
   const phase = PHASE_COLORS[entry.phase];
@@ -108,6 +110,17 @@ export default function DailyTaskCard({ entry, isCompleted, onComplete }: DailyT
             </li>
           ))}
         </ul>
+      )}
+
+      {/* Tombol aksi menuju halaman terkait misi (mis. lengkapi profil) */}
+      {action && !isCompleted && (
+        <Link
+          href={action.href}
+          className="w-full flex items-center justify-center gap-2 mb-3 py-3 px-4 bg-[#FFF5F5] hover:bg-[#FFE9E9] text-[#D64545] border border-[#D64545]/30 rounded-lg font-semibold text-sm transition-colors"
+        >
+          {action.label}
+          <ArrowRight className="w-4 h-4" />
+        </Link>
       )}
 
       {/* CTA */}

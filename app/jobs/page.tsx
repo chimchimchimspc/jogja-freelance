@@ -10,6 +10,7 @@ import { Search, SlidersHorizontal, X, Briefcase, Loader2 } from "lucide-react";
 import Link from "next/link";
 import FadeInSection from "../components/ui/FadeInSection";
 import { jobsApi, type ApiJob } from "../lib/jobs.api";
+import { useAuth } from "../context/AuthContext";
 
 // Adapter: ApiJob → shape expected by JobCard
 function adaptJob(j: ApiJob) {
@@ -42,6 +43,7 @@ const SORT_OPTIONS = [
 ];
 
 export default function JobsPage() {
+  const { user } = useAuth();
   const [filters, setFilters]           = useState<Filters>(DEFAULT_FILTERS);
   const [sort, setSort]                 = useState("newest");
   const [showMobileFilter, setShowMobileFilter] = useState(false);
@@ -79,10 +81,26 @@ export default function JobsPage() {
     return () => clearTimeout(t);
   }, [fetchJobs]);
 
+  // Muat lamaran user agar tombol "Lamar" tidak muncul lagi untuk lowongan yang sudah dilamar
+  useEffect(() => {
+    if (!user || user.role !== "freelancer") return;
+    (async () => {
+      try {
+        const res = await jobsApi.myApplications({ limit: 100 });
+        setAppliedIds(new Set(res.data.map((a) => a.job_id)));
+      } catch {}
+    })();
+  }, [user]);
+
   const handleApplySuccess = (jobId: string) => {
     setAppliedIds((p) => new Set([...p, jobId]));
     setToast("Lamaran berhasil dikirim! Pantau di halaman Lamaranku.");
   };
+
+  // Lowongan yang sudah dilamar diletakkan paling bawah (urutan lain tetap)
+  const displayJobs = [...jobs].sort(
+    (a, b) => Number(appliedIds.has(a.id)) - Number(appliedIds.has(b.id))
+  );
 
   return (
     <>
@@ -179,7 +197,7 @@ export default function JobsPage() {
                     Menampilkan <strong>{jobs.length}</strong> dari {total} lowongan
                   </p>
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                    {jobs.map((job, i) => (
+                    {displayJobs.map((job, i) => (
                       <FadeInSection key={job.id} delay={Math.min(i * 80, 320)}>
                         <JobCard job={job} onApply={setApplyJob} applied={appliedIds.has(job.id)} />
                       </FadeInSection>

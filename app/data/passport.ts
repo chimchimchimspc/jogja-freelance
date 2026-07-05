@@ -266,3 +266,8 @@ export function getMilestoneDay(day: number): DayEntry | undefined {
 }
 
 export const BADGE_MILESTONES = [5, 7, 15, 18, 30];
+
+// Misi tertentu punya aksi langsung ke halaman terkait (quick access)
+export const DAY_ACTIONS: Record<number, { href: string; label: string }> = {
+  1: { href: "/profile/edit", label: "Lengkapi Profil Sekarang" },
+};

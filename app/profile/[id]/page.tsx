@@ -4,6 +4,7 @@ import Header from "../../components/layout/Header";
 import Footer from "../../components/layout/Footer";
 import ProfileHeader from "../../components/profile/ProfileHeader";
 import BadgeGrid from "../../components/profile/BadgeGrid";
+import ReviewList from "../../components/profile/ReviewList";
 import { Loader2 } from "lucide-react";
 import Link from "next/link";
 import { profileApi, type ApiProfile } from "../../lib/profile.api";
@@ -87,6 +88,9 @@ export default function PublicProfilePage({ params }: { params: Promise<{ id: st
           <ProfileHeader profile={profile} isOwnProfile={false} />
           <div className="mt-6">
             <BadgeGrid earnedBadges={profile.earnedBadges} />
+          </div>
+          <div className="mt-6">
+            <ReviewList userId={profile.id} />
           </div>
         </div>
       </main>

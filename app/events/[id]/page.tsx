@@ -13,6 +13,7 @@ import EventMap from "../../components/events/EventMap";
 import { EVENT_TYPES, formatDate, formatTime, type Event as LocalEvent } from "../../data/events";
 import { eventsApi, type ApiEvent } from "../../lib/events.api";
 import { useAuth } from "../../context/AuthContext";
+import { assetUrl } from "../../lib/api";
 
 // Adapter: ApiEvent → local Event shape (dipakai EventMap & CheckInModal)
 function adaptEvent(e: ApiEvent): LocalEvent {
@@ -46,6 +47,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
   const { user } = useAuth();
 
   const [event, setEvent] = useState<LocalEvent | null>(null);
+  const [organizer, setOrganizer] = useState<{ company?: string; logo?: string; industry?: string }>({});
   const [loading, setLoading] = useState(true);
   const [showCheckIn, setShowCheckIn] = useState(false);
   const [isAttending, setIsAttending] = useState(false);
@@ -58,6 +60,11 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
       try {
         const res = await eventsApi.get(id);
         setEvent(adaptEvent(res.data));
+        setOrganizer({
+          company: res.data.organizer_company,
+          logo: res.data.organizer_logo,
+          industry: res.data.organizer_industry,
+        });
       } catch {
         setEvent(null);
       } finally {
@@ -141,6 +148,14 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
           >
             <ArrowLeft className="w-4 h-4" /> Kembali ke Events
           </Link>
+
+          {/* Foto event */}
+          {event.image && (
+            <div className="w-full h-64 sm:h-80 rounded-lg overflow-hidden mb-6 border border-[#E7E7E7]">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={assetUrl(event.image)} alt={event.title} className="w-full h-full object-cover" />
+            </div>
+          )}
 
           {/* Header */}
           <div className="bg-white border border-[#E7E7E7] rounded-lg p-6 sm:p-8 mb-6">
@@ -233,16 +248,29 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                 </>
               )}
 
-              {/* Organizer */}
+              {/* Organizer — profil dari pengelola */}
               <div className="bg-[#F1F1F1] rounded-lg p-4">
                 <h3 className="text-sm font-bold text-[#232F3E] mb-3">Penyelenggara</h3>
                 <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-full bg-[#D64545] flex items-center justify-center text-white font-bold">
-                    {(event.organizerName ?? "?").charAt(0)}
+                  <div className="w-12 h-12 rounded-full bg-[#D64545] flex items-center justify-center text-white font-bold overflow-hidden flex-shrink-0">
+                    {organizer.logo ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={assetUrl(organizer.logo)}
+                        alt={organizer.company ?? event.organizerName}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      (organizer.company ?? event.organizerName ?? "?").charAt(0)
+                    )}
                   </div>
                   <div>
-                    <p className="text-sm font-semibold text-[#232F3E]">{event.organizerName}</p>
-                    <p className="text-xs text-[#565A5C]">Verified Organizer</p>
+                    <p className="text-sm font-semibold text-[#232F3E]">
+                      {organizer.company ?? event.organizerName}
+                    </p>
+                    <p className="text-xs text-[#565A5C]">
+                      {organizer.industry || "Verified Organizer"}
+                    </p>
                   </div>
                 </div>
               </div>

@@ -7,6 +7,7 @@ import Toast from "../ui/Toast";
 import Link from "next/link";
 import { useAuth } from "../../context/AuthContext";
 import { Briefcase, Code2 } from "lucide-react";
+import GoogleLoginButton from "./GoogleLoginButton";
 
 const SKILL_OPTIONS = [
   "Web Development", "UI/UX Design", "Content Writing",
@@ -185,6 +186,13 @@ export default function RegisterForm() {
       <Button type="submit" fullWidth size="lg" loading={loading}>
         Daftar Akun
       </Button>
+
+      {role === "freelancer" && (
+        <GoogleLoginButton
+          redirectTo="/auth/profile-setup"
+          onError={(msg) => setToast({ message: msg, type: "error" })}
+        />
+      )}
 
       <p className="text-center text-sm text-[#565A5C]">
         Sudah punya akun?{" "}

@@ -13,11 +13,13 @@ const ALL_BADGES = [
   { name: "30-Day Passport Finisher", icon: "🏆", day: 30 },
 ];
 
+// Level berbasis HARI SELESAI — sama persis dengan aturan backend:
+// Bronze 0 → Silver 10 → Gold 20 → Platinum 30
 const LEVEL_CONFIG = [
-  { name: "Bronze",   min: 0,  max: 3,  icon: "🥉", color: "text-orange-700", bgColor: "bg-[#8B4513]", textColor: "text-white", contrastText: "white" },
-  { name: "Silver",   min: 3,  max: 6,  icon: "🥈", color: "text-gray-500",   bgColor: "bg-[#708090]", textColor: "text-white", contrastText: "white" },
-  { name: "Gold",     min: 6,  max: 10, icon: "🥇", color: "text-yellow-600", bgColor: "bg-[#FFD700]", textColor: "text-[#1a1a1a]", contrastText: "#1a1a1a" },
-  { name: "Platinum", min: 10, max: 15, icon: "💎", color: "text-blue-500",   bgColor: "bg-[#E5E4E2]", textColor: "text-[#1a1a1a]", contrastText: "#1a1a1a" },
+  { name: "Bronze",   min: 0,  icon: "🥉", color: "text-orange-700", bgColor: "bg-[#8B4513]", textColor: "text-white", contrastText: "white" },
+  { name: "Silver",   min: 10, icon: "🥈", color: "text-gray-500",   bgColor: "bg-[#708090]", textColor: "text-white", contrastText: "white" },
+  { name: "Gold",     min: 20, icon: "🥇", color: "text-yellow-600", bgColor: "bg-[#FFD700]", textColor: "text-[#1a1a1a]", contrastText: "#1a1a1a" },
+  { name: "Platinum", min: 30, icon: "💎", color: "text-blue-500",   bgColor: "bg-[#E5E4E2]", textColor: "text-[#1a1a1a]", contrastText: "#1a1a1a" },
 ];
 
 interface PassportSidebarProps {
@@ -26,13 +28,15 @@ interface PassportSidebarProps {
 
 export default function PassportSidebar({ progress }: PassportSidebarProps) {
   const earned = progress.earnedBadges;
+  const daysDone = progress.completedDays.length;
   const level  = LEVEL_CONFIG.find((l) => l.name === progress.level) ?? LEVEL_CONFIG[0];
   const nextLevel = LEVEL_CONFIG[LEVEL_CONFIG.indexOf(level) + 1];
-  const toNext = nextLevel ? nextLevel.min - earned.length : 0;
-  const streakDays = progress.completedDays.length;
+  const toNext = nextLevel ? Math.max(nextLevel.min - daysDone, 0) : 0;
+  const streakDays = daysDone;
 
+  // Progress menuju level berikutnya, dihitung dari hari selesai
   const targetPct = nextLevel
-    ? Math.round(((earned.length - level.min) / (nextLevel.min - level.min)) * 100)
+    ? Math.min(Math.max(Math.round(((daysDone - level.min) / (nextLevel.min - level.min)) * 100), 0), 100)
     : 100;
   const [levelPct, setLevelPct] = useState(0);
 
@@ -80,36 +84,16 @@ export default function PassportSidebar({ progress }: PassportSidebarProps) {
             <p className={`font-bold text-lg ${level.textColor}`}>Level {level.name}</p>
             {nextLevel && (
               <p className="text-xs" style={{ color: level.contrastText === "white" ? "rgba(255,255,255,0.7)" : "rgba(26,26,26,0.7)" }}>
-                {toNext} badge lagi untuk {nextLevel.name}
+                {toNext} hari lagi untuk {nextLevel.name}
               </p>
             )}
           </div>
         </div>
         {nextLevel && (
-          <div className="relative pt-4 pb-2">
-            {/* Medal milestones */}
-            <div className="absolute top-0 w-full flex justify-between px-0">
-              {LEVEL_CONFIG.map((l) => {
-                const isReached = earned.length >= l.min;
-                return (
-                  <div
-                    key={l.name}
-                    className="relative transition-all duration-500"
-                    style={{
-                      opacity: isReached ? 1 : 0.2,
-                      transform: isReached ? "scale(1.1)" : "scale(0.8)",
-                      color: level.contrastText,
-                    }}
-                  >
-                    <div className="text-lg">{l.icon}</div>
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* Progress bar */}
+          <div className="pt-1 pb-2">
+            {/* Progress bar menuju level berikutnya */}
             <div
-              className="w-full rounded-full h-2 mt-6"
+              className="w-full rounded-full h-2"
               style={{
                 backgroundColor: level.contrastText === "white" ? "rgba(255,255,255,0.2)" : "rgba(26,26,26,0.2)"
               }}

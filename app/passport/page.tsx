@@ -8,11 +8,13 @@ import PassportSidebar from "../components/passport/PassportSidebar";
 import BadgeUnlockModal from "../components/passport/BadgeUnlockModal";
 import Toast from "../components/ui/Toast";
 import { PHASE_COLORS } from "../data/passport";
-import { BookOpen, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
+import { BookOpen, ChevronLeft, ChevronRight, Loader2, Lock } from "lucide-react";
+import Link from "next/link";
 import { clsx } from "clsx";
 import FadeInSection from "../components/ui/FadeInSection";
-import { PASSPORT_DAYS, type DayEntry, type PassportProgress as LocalProgress } from "../data/passport";
+import { PASSPORT_DAYS, DAY_ACTIONS, type DayEntry, type PassportProgress as LocalProgress } from "../data/passport";
 import { passportApi, type PassportProgress, type PassportDayEntry } from "../lib/passport.api";
+import { useAuth } from "../context/AuthContext";
 
 // Convert API snake_case progress to component camelCase format
 function toLocalProgress(p: PassportProgress): LocalProgress {
@@ -42,6 +44,7 @@ function mergeDay(apiDay: PassportDayEntry): DayEntry {
 }
 
 export default function PassportPage() {
+  const { user, isLoading: authLoading } = useAuth();
   const [progress, setProgress]   = useState<PassportProgress | null>(null);
   const [days, setDays]           = useState<PassportDayEntry[]>([]);
   const [selectedDay, setSelectedDay] = useState(1);
@@ -51,7 +54,20 @@ export default function PassportPage() {
   const [error, setError]         = useState<string | null>(null);
   const [marking, setMarking]     = useState(false);
 
+  const isGuest = !authLoading && !user;
+
   useEffect(() => {
+    if (authLoading) return;
+    // Tamu: tampilkan pratinjau panduan (hari 1) di balik blur + prompt login
+    if (!user) {
+      setProgress({
+        current_day: 1, completed_days: [], days_completed: 0,
+        earned_badges: [], level: "Bronze", start_date: "",
+      } as PassportProgress);
+      setDays([]);
+      setLoading(false);
+      return;
+    }
     (async () => {
       try {
         const res = await passportApi.getJourney();
@@ -64,9 +80,9 @@ export default function PassportPage() {
         setLoading(false);
       }
     })();
-  }, []);
+  }, [user, authLoading]);
 
-  if (loading) {
+  if (loading || authLoading) {
     return (
       <>
         <Header />
@@ -78,7 +94,7 @@ export default function PassportPage() {
     );
   }
 
-  if (error || !progress || days.length === 0) {
+  if (error || !progress || (days.length === 0 && !isGuest)) {
     return (
       <>
         <Header />
@@ -108,15 +124,19 @@ export default function PassportPage() {
     setMarking(true);
     try {
       const res = await passportApi.markComplete(selectedDay);
-      const newCompleted = [...(progress.completed_days ?? []), selectedDay];
-      const newCurrent   = Math.min(selectedDay + 1, 30);
+      const newCurrent = Math.min(selectedDay + 1, 30);
 
-      setProgress({
-        ...progress,
-        completed_days: newCompleted,
-        current_day: newCurrent,
-        days_completed: (progress.days_completed ?? 0) + 1,
-      });
+      // Pakai progress terbaru dari server (level & badge ikut ter-update)
+      if (res.data.progress) {
+        setProgress(res.data.progress);
+      } else {
+        setProgress({
+          ...progress,
+          completed_days: [...(progress.completed_days ?? []), selectedDay],
+          current_day: newCurrent,
+          days_completed: (progress.days_completed ?? 0) + 1,
+        });
+      }
 
       if (res.data.badge_awarded) {
         setTimeout(() => setUnlockedBadge(res.data.badge_awarded!), 400);
@@ -140,7 +160,42 @@ export default function PassportPage() {
   return (
     <>
       <Header />
-      <main className="flex-1 bg-[#F1F1F1]">
+      <main className="flex-1 bg-[#F1F1F1] relative">
+        {/* Prompt login untuk tamu — konten di belakang tetap termuat tapi di-blur */}
+        {isGuest && (
+          <div className="absolute inset-0 z-20 pointer-events-none">
+            <div className="sticky top-28 flex justify-center px-4 py-16">
+              <div className="pointer-events-auto bg-white rounded-2xl shadow-2xl border border-[#EAE6F5] p-8 max-w-md w-full text-center">
+                <div className="w-14 h-14 rounded-full bg-[#FFF5F5] flex items-center justify-center mx-auto mb-4">
+                  <Lock className="w-7 h-7 text-[#D64545]" />
+                </div>
+                <h2 className="text-xl font-bold text-[#1E1B2E] mb-2">
+                  Masuk untuk Mengakses Panduan
+                </h2>
+                <p className="text-sm text-[#6B6880] mb-6">
+                  Panduan 30 hari lengkap dengan misi harian, tips, dan badge menantimu.
+                  Masuk dulu yuk untuk mulai perjalananmu!
+                </p>
+                <div className="flex flex-col gap-2">
+                  <Link
+                    href="/auth/login?redirect=/passport"
+                    className="w-full py-3 bg-[#D64545] hover:bg-[#C23B3B] text-white rounded-lg font-semibold text-sm transition-colors"
+                  >
+                    Masuk
+                  </Link>
+                  <Link
+                    href="/auth/register"
+                    className="w-full py-3 bg-[#F8F6FF] hover:bg-[#EAE6F5] text-[#1E1B2E] rounded-lg font-semibold text-sm transition-colors"
+                  >
+                    Belum punya akun? Daftar Gratis
+                  </Link>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div className={isGuest ? "blur-sm pointer-events-none select-none" : ""}>
         <div className="bg-white text-[#1E1B2E] py-10">
           <div className="max-w-7xl mx-auto px-4">
             <div className="flex items-center gap-3 mb-2">
@@ -154,6 +209,29 @@ export default function PassportPage() {
         </div>
 
         <div className="max-w-7xl mx-auto px-4 py-6">
+          {/* Banner tamat 30 hari → cetak portofolio */}
+          {localProgress.completedDays.length >= 30 && (
+            <FadeInSection>
+              <div className="bg-[#D64545] text-white rounded-xl p-6 mb-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div className="flex items-center gap-4">
+                  <span className="text-4xl">🎓</span>
+                  <div>
+                    <h2 className="text-lg font-bold">Selamat, Panduan 30 Hari Tamat!</h2>
+                    <p className="text-white/80 text-sm">
+                      Cetak portofoliomu — berisi proyek, event yang diikuti, skill, dan badge yang kamu raih.
+                    </p>
+                  </div>
+                </div>
+                <Link
+                  href="/portfolio"
+                  className="flex-shrink-0 inline-flex items-center gap-2 px-5 py-3 bg-white text-[#D64545] rounded-lg font-bold text-sm hover:bg-[#FFF5F5] transition-colors shadow"
+                >
+                  🖨️ Print Portofolio
+                </Link>
+              </div>
+            </FadeInSection>
+          )}
+
           <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6">
             <div className="space-y-4">
               <FadeInSection delay={100}>
@@ -195,6 +273,7 @@ export default function PassportPage() {
                   entry={selectedEntry}
                   isCompleted={isCompleted}
                   onComplete={isFuture ? () => {} : handleComplete}
+                  action={DAY_ACTIONS[selectedEntry.day]}
                 />
               </FadeInSection>
 
@@ -232,6 +311,7 @@ export default function PassportPage() {
 
             <PassportSidebar progress={localProgress} />
           </div>
+        </div>
         </div>
       </main>
 

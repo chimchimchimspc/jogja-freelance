@@ -5,12 +5,14 @@ import {
   Calendar, ChevronRight, CheckCircle2, Lock, Loader2,
   Briefcase, MapPin, Sparkles, FileText, User,
 } from "lucide-react";
-import { PASSPORT_DAYS } from "../../data/passport";
+import { PASSPORT_DAYS, DAY_ACTIONS } from "../../data/passport";
 import { EVENT_TYPES, type EventType } from "../../data/events";
 import { passportApi, type PassportProgress } from "../../lib/passport.api";
 import { jobsApi, type ApiJob } from "../../lib/jobs.api";
 import { eventsApi, type ApiEvent } from "../../lib/events.api";
+import { recommendationsApi } from "../../lib/recommendations.api";
 import { useAuth } from "../../context/AuthContext";
+import { assetUrl } from "../../lib/api";
 import FadeInSection from "../ui/FadeInSection";
 
 // Warna kategori lowongan — mengikuti mapping di halaman Lowongan (JobCard)
@@ -54,25 +56,51 @@ export default function LoggedInHome() {
   const [progress, setProgress] = useState<PassportProgress | null>(null);
   const [jobs, setJobs] = useState<ApiJob[]>([]);
   const [events, setEvents] = useState<ApiEvent[]>([]);
+  const [recCategories, setRecCategories] = useState<string[]>([]);
+  const [recEventTypes, setRecEventTypes] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
+  const [barWidth, setBarWidth] = useState(0);
 
   useEffect(() => {
     (async () => {
-      const [progRes, jobsRes, eventsRes] = await Promise.allSettled([
+      const [progRes, jobsRes, eventsRes, recRes] = await Promise.allSettled([
         passportApi.getProgress(),
         jobsApi.list({ sort: "newest", limit: 3 }),
         eventsApi.list({ upcoming: true, limit: 2 }),
+        recommendationsApi.get(),
       ]);
       setProgress(
         progRes.status === "fulfilled"
           ? progRes.value.data
           : { current_day: 1, completed_days: [], days_completed: 0, earned_badges: [], level: "Bronze", start_date: "" }
       );
-      if (jobsRes.status === "fulfilled") setJobs(jobsRes.value.data);
-      if (eventsRes.status === "fulfilled") setEvents(eventsRes.value.data);
+
+      // Rekomendasi berdasarkan yang sering dibuka — fallback ke terbaru/terdekat
+      const rec = recRes.status === "fulfilled" ? recRes.value.data : null;
+      if (rec && rec.jobs.length > 0) {
+        setJobs(rec.jobs.slice(0, 3));
+        setRecCategories(rec.top_categories);
+      } else if (jobsRes.status === "fulfilled") {
+        setJobs(jobsRes.value.data);
+      }
+      if (rec && rec.events.length > 0) {
+        setEvents(rec.events.slice(0, 2));
+        setRecEventTypes(rec.top_event_types);
+      } else if (eventsRes.status === "fulfilled") {
+        setEvents(eventsRes.value.data);
+      }
+
       setLoading(false);
     })();
   }, []);
+
+  // Animasi mengisi progress bar: mulai dari 0 lalu naik ke persentase asli
+  useEffect(() => {
+    if (loading || !progress) return;
+    const pct = Math.round(((progress.completed_days ?? []).length / 30) * 100);
+    const t = setTimeout(() => setBarWidth(pct), 300);
+    return () => clearTimeout(t);
+  }, [loading, progress]);
 
   if (loading) {
     return (
@@ -94,29 +122,31 @@ export default function LoggedInHome() {
 
   return (
     <div className="min-h-screen bg-[#F8F6FF]">
-      {/* Welcome banner — putih, teks gelap */}
-      <FadeInSection>
-        <div className="bg-white border-b border-[#EAE6F5] py-8">
-          <div className="max-w-7xl mx-auto px-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div>
-                <h1 className="text-2xl sm:text-3xl font-bold text-[#1E1B2E] mb-1">
-                  Halo, {user?.name?.split(" ")[0] ?? "Freelancer"}! 👋
-                </h1>
-                <p className="text-[#6B6880] text-sm">
-                  Hari ke-{currentDay} dari 30 · Level {progress?.level ?? "Bronze"} · {earnedBadges.length} badge
-                </p>
-              </div>
-              <div className="sm:text-right">
-                <p className="text-xs text-[#6B6880] mb-1.5">Progress Passport · {progressPct}%</p>
-                <div className="w-full sm:w-56 h-2.5 bg-[#EAE6F5] rounded-full overflow-hidden">
-                  <div className="h-full bg-[#D64545] rounded-full transition-all" style={{ width: `${progressPct}%` }} />
-                </div>
+      {/* Welcome banner — putih, teks gelap, tanpa animasi masuk */}
+      <div className="bg-white border-b border-[#EAE6F5] py-8">
+        <div className="max-w-7xl mx-auto px-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <h1 className="text-2xl sm:text-3xl font-bold text-[#1E1B2E] mb-1">
+                Halo, {user?.name?.split(" ")[0] ?? "Freelancer"}! 👋
+              </h1>
+              <p className="text-[#6B6880] text-sm">
+                Hari ke-{currentDay} dari 30 · Level {progress?.level ?? "Bronze"} · {earnedBadges.length} badge
+              </p>
+            </div>
+            <div className="sm:text-right">
+              <p className="text-xs text-[#6B6880] mb-1.5">Progress Passport · {progressPct}%</p>
+              <div className="w-full sm:w-56 h-2.5 bg-[#EAE6F5] rounded-full overflow-hidden">
+                {/* Bar terisi perlahan dari 0 ke persentase asli */}
+                <div
+                  className="h-full bg-[#D64545] rounded-full transition-[width] duration-1000 ease-out"
+                  style={{ width: `${barWidth}%` }}
+                />
               </div>
             </div>
           </div>
         </div>
-      </FadeInSection>
+      </div>
 
       <div className="max-w-7xl mx-auto px-4 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -141,13 +171,26 @@ export default function LoggedInHome() {
                       <span>⏱️ {todayEntry.estimatedTime}</span>
                       <span>📍 Fase: {todayEntry.phase}</span>
                     </div>
-                    <Link
-                      href={`/passport?day=${currentDay}`}
-                      className="inline-flex items-center gap-2 bg-[#D64545] hover:bg-[#C23B3B] text-white font-semibold text-sm py-2.5 px-5 rounded-lg transition-colors"
-                    >
-                      {isCompleted ? "Lihat Hari Ini" : "Mulai Sekarang"}
-                      <ChevronRight className="w-4 h-4" />
-                    </Link>
+                    {/* Quick access: langsung ke aksi misi bila ada (mis. hari 1 → edit profil) */}
+                    <div className="flex flex-wrap gap-2">
+                      <Link
+                        href={!isCompleted && DAY_ACTIONS[currentDay] ? DAY_ACTIONS[currentDay].href : `/passport?day=${currentDay}`}
+                        className="inline-flex items-center gap-2 bg-[#D64545] hover:bg-[#C23B3B] text-white font-semibold text-sm py-2.5 px-5 rounded-lg transition-colors"
+                      >
+                        {isCompleted
+                          ? "Lihat Hari Ini"
+                          : DAY_ACTIONS[currentDay]?.label ?? "Mulai Sekarang"}
+                        <ChevronRight className="w-4 h-4" />
+                      </Link>
+                      {!isCompleted && DAY_ACTIONS[currentDay] && (
+                        <Link
+                          href={`/passport?day=${currentDay}`}
+                          className="inline-flex items-center gap-2 bg-[#F8F6FF] hover:bg-[#EAE6F5] text-[#6B6880] font-semibold text-sm py-2.5 px-5 rounded-lg transition-colors"
+                        >
+                          Lihat di Panduan
+                        </Link>
+                      )}
+                    </div>
                   </div>
                 </div>
               </FadeInSection>
@@ -157,9 +200,18 @@ export default function LoggedInHome() {
             <FadeInSection delay={160}>
               <div>
                 <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-2">
-                    <Briefcase className="w-5 h-5 text-[#D64545]" />
-                    <h2 className="font-bold text-[#1E1B2E]">Lowongan Terbaru</h2>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <Briefcase className="w-5 h-5 text-[#D64545]" />
+                      <h2 className="font-bold text-[#1E1B2E]">
+                        {recCategories.length > 0 ? "Lowongan Untukmu" : "Lowongan Terbaru"}
+                      </h2>
+                    </div>
+                    {recCategories.length > 0 && (
+                      <p className="text-xs text-[#6B6880] mt-0.5 ml-7">
+                        Karena kamu sering membuka: <span className="font-semibold text-[#D64545]">{recCategories.join(", ")}</span>
+                      </p>
+                    )}
                   </div>
                   <Link href="/jobs" className="text-xs text-[#D64545] hover:underline font-semibold flex items-center gap-0.5">
                     Lihat semua <ChevronRight className="w-3.5 h-3.5" />
@@ -180,8 +232,14 @@ export default function LoggedInHome() {
                           className="bg-white border border-[#EAE6F5] rounded-xl p-5 hover:shadow-md hover:-translate-y-0.5 transition-all group"
                         >
                           <div className="flex items-center gap-3 mb-3">
-                            <div className={`w-10 h-10 rounded-lg ${style.avatar} flex items-center justify-center text-white font-bold flex-shrink-0`}>
-                              {(job.company ?? "?").charAt(0)}
+                            {/* Logo dari profil pengelola, fallback inisial berwarna */}
+                            <div className={`w-10 h-10 rounded-lg ${style.avatar} flex items-center justify-center text-white font-bold flex-shrink-0 overflow-hidden`}>
+                              {job.company_logo ? (
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img src={assetUrl(job.company_logo)} alt={job.company} className="w-full h-full object-cover" />
+                              ) : (
+                                (job.company ?? "?").charAt(0)
+                              )}
                             </div>
                             <div className="min-w-0">
                               <p className="text-sm font-bold text-[#1E1B2E] group-hover:text-[#D64545] transition-colors line-clamp-1">
@@ -234,11 +292,23 @@ export default function LoggedInHome() {
             <FadeInSection delay={240}>
               <div>
                 <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-2">
-                    <Sparkles className="w-5 h-5 text-[#D64545]" />
-                    <h2 className="font-bold text-[#1E1B2E]">
-                      {todayEvents.length > 0 ? "Event Hari Ini & Mendatang" : "Event Mendatang"}
-                    </h2>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <Sparkles className="w-5 h-5 text-[#D64545]" />
+                      <h2 className="font-bold text-[#1E1B2E]">
+                        {recEventTypes.length > 0
+                          ? "Event Untukmu"
+                          : todayEvents.length > 0 ? "Event Hari Ini & Mendatang" : "Event Mendatang"}
+                      </h2>
+                    </div>
+                    {recEventTypes.length > 0 && (
+                      <p className="text-xs text-[#6B6880] mt-0.5 ml-7">
+                        Karena kamu sering membuka event:{" "}
+                        <span className="font-semibold text-[#D64545]">
+                          {recEventTypes.map((t) => EVENT_TYPES[t as EventType]?.label ?? t).join(", ")}
+                        </span>
+                      </p>
+                    )}
                   </div>
                   <Link href="/events" className="text-xs text-[#D64545] hover:underline font-semibold flex items-center gap-0.5">
                     Lihat semua <ChevronRight className="w-3.5 h-3.5" />
@@ -258,15 +328,26 @@ export default function LoggedInHome() {
                           href={`/events/${ev.id}`}
                           className={`border rounded-xl p-4 flex items-center gap-4 hover:shadow-md hover:-translate-y-0.5 transition-all group ${typeInfo?.color ?? "bg-white border-[#EAE6F5]"}`}
                         >
-                          {/* Kotak tanggal berwarna sesuai tipe event */}
-                          <div className={`w-14 h-14 rounded-xl ${EVENT_DATE_BOX[ev.type] ?? "bg-[#D64545]"} flex flex-col items-center justify-center flex-shrink-0 shadow-sm`}>
-                            <span className="text-lg font-bold text-white leading-none">
-                              {new Date(ev.event_date).getDate()}
-                            </span>
-                            <span className="text-[10px] text-white/80 uppercase font-semibold mt-0.5">
-                              {new Date(ev.event_date).toLocaleDateString("id-ID", { month: "short" })}
-                            </span>
-                          </div>
+                          {/* Foto event dari pengelola; fallback kotak tanggal berwarna */}
+                          {ev.image_url ? (
+                            <div className="relative w-20 h-14 rounded-xl overflow-hidden flex-shrink-0 shadow-sm">
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img src={assetUrl(ev.image_url)} alt={ev.title} className="w-full h-full object-cover" />
+                              <div className={`absolute bottom-0 left-0 right-0 ${EVENT_DATE_BOX[ev.type] ?? "bg-[#D64545]"} text-white text-[10px] font-bold text-center py-0.5`}>
+                                {new Date(ev.event_date).getDate()}{" "}
+                                {new Date(ev.event_date).toLocaleDateString("id-ID", { month: "short" }).toUpperCase()}
+                              </div>
+                            </div>
+                          ) : (
+                            <div className={`w-14 h-14 rounded-xl ${EVENT_DATE_BOX[ev.type] ?? "bg-[#D64545]"} flex flex-col items-center justify-center flex-shrink-0 shadow-sm`}>
+                              <span className="text-lg font-bold text-white leading-none">
+                                {new Date(ev.event_date).getDate()}
+                              </span>
+                              <span className="text-[10px] text-white/80 uppercase font-semibold mt-0.5">
+                                {new Date(ev.event_date).toLocaleDateString("id-ID", { month: "short" })}
+                              </span>
+                            </div>
+                          )}
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 flex-wrap mb-1">
                               <p className="text-sm font-bold text-[#1E1B2E] group-hover:text-[#D64545] transition-colors truncate">
