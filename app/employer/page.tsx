@@ -186,7 +186,9 @@ export default function EmployerDashboard() {
                           <div className="flex items-start justify-between gap-3 mb-3">
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-2 flex-wrap mb-1">
-                                <h3 className="font-bold text-[#1E1B2E]">{job.title}</h3>
+                                <Link href={`/employer/jobs/${job.id}`} className="font-bold text-[#1E1B2E] hover:text-[#D64545] transition-colors">
+                                  {job.title}
+                                </Link>
                                 <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${badge.cls}`}>
                                   {badge.label}
                                 </span>

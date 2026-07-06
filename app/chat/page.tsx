@@ -1,6 +1,6 @@
 "use client";
 import { Suspense, useState, useEffect, useRef, useCallback, useMemo } from "react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import Header from "../components/layout/Header";
 import {
@@ -78,6 +78,16 @@ function Avatar({ name, id, avatar, size = "md" }: { name: string; id: string; a
 function ChatInner() {
   const { user, isLoading: authLoading } = useAuth();
   const searchParams = useSearchParams();
+  const router = useRouter();
+
+  // Kembali ke halaman sebelumnya (fallback ke beranda bila dibuka langsung)
+  const goBack = () => {
+    if (typeof window !== "undefined" && window.history.length > 1) {
+      router.back();
+    } else {
+      router.push("/");
+    }
+  };
   const initialConv = searchParams.get("c");
 
   const [realConvos, setRealConvos] = useState<ApiConversation[]>([]);
@@ -216,7 +226,17 @@ function ChatInner() {
         <aside className={`border-r border-[#EDEDED] flex-col min-h-0 ${selectedId ? "hidden md:flex" : "flex"}`}>
           {/* Sidebar header */}
           <div className="px-4 pt-4 pb-2 flex items-center justify-between">
-            <h1 className="text-xl font-bold text-[#232F3E]">Pesan</h1>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={goBack}
+                className="p-1.5 -ml-1.5 rounded-full hover:bg-[#F1F3F4] text-[#565A5C] hover:text-[#D64545] transition-colors"
+                title="Kembali ke halaman sebelumnya"
+                aria-label="Kembali"
+              >
+                <ArrowLeft className="w-5 h-5" />
+              </button>
+              <h1 className="text-xl font-bold text-[#232F3E]">Pesan</h1>
+            </div>
             {totalUnread > 0 && (
               <span className="text-xs font-semibold text-white bg-[#D64545] rounded-full px-2 py-0.5">
                 {totalUnread} baru

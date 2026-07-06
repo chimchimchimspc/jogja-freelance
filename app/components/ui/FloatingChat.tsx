@@ -39,7 +39,7 @@ const CATEGORIES: HelpCategory[] = [
         id: "event",
         option: "📅 Ikut event & check-in",
         answer:
-          "Pilih event di halaman Events lalu klik \"RSVP Sekarang\". Saat hadir di lokasi, klik \"Check-in Event\" dan masukkan kode dari penyelenggara — kamu dapat badge kehadiran setelah diverifikasi admin.",
+          "Pilih event di halaman Events lalu klik \"RSVP Sekarang\". Saat hadir di lokasi, klik \"Check-in Event\" dan masukkan kode dari penyelenggara — badge kehadiran langsung masuk ke profilmu.",
         links: [{ href: "/events", label: "Lihat Events" }],
       },
       {

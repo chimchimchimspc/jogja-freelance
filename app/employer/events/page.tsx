@@ -181,7 +181,9 @@ export default function EmployerEventsDashboard() {
                         <div className="flex items-start justify-between gap-3 mb-3">
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 flex-wrap mb-1">
-                              <h3 className="font-bold text-[#1E1B2E]">{ev.title}</h3>
+                              <Link href={`/employer/events/${ev.id}`} className="font-bold text-[#1E1B2E] hover:text-[#D64545] transition-colors">
+                                {ev.title}
+                              </Link>
                               <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${badge.cls}`}>
                                 {badge.label}
                               </span>
@@ -279,8 +281,8 @@ export default function EmployerEventsDashboard() {
               <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
                 <p className="text-xs font-bold text-amber-800 mb-1">💡 Tips Event</p>
                 <p className="text-xs text-amber-700 leading-relaxed">
-                  Sertakan <strong>kode check-in</strong> saat membuat event agar peserta bisa check-in
-                  di lokasi dan mendapatkan badge kehadiran.
+                  Setiap event otomatis punya <strong>kode & QR check-in</strong> — klik judul event
+                  untuk menampilkannya di lokasi, peserta tinggal scan untuk absen kehadiran.
                 </p>
               </div>
             </div>

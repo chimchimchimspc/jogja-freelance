@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import Header from "../components/layout/Header";
 import Footer from "../components/layout/Footer";
 import EventCard from "../components/events/EventCard";
@@ -10,6 +11,7 @@ import type { Event as LocalEvent, EventType } from "../data/events";
 import { EVENT_TYPES } from "../data/events";
 import FadeInSection from "../components/ui/FadeInSection";
 import { eventsApi, type ApiEvent } from "../lib/events.api";
+import { useAuth } from "../context/AuthContext";
 
 type FilterType = "upcoming" | "past";
 
@@ -40,12 +42,16 @@ function adaptEvent(e: ApiEvent): LocalEvent {
 }
 
 export default function EventsPage() {
+  const router = useRouter();
+  const { user } = useAuth();
   const [filterType, setFilterType] = useState<FilterType>("upcoming");
   const [selectedCategory, setSelectedCategory] = useState<EventType | "semua">("semua");
   const [checkInEvent, setCheckInEvent] = useState<LocalEvent | null>(null);
   const [toast, setToast] = useState<string | null>(null);
 
   const [events, setEvents]         = useState<LocalEvent[]>([]);
+  const [rsvpedIds, setRsvpedIds]   = useState<Set<string>>(new Set());
+  const [rsvpLoadingId, setRsvpLoadingId] = useState<string | null>(null);
   const [loading, setLoading]       = useState(true);
   const [error, setError]           = useState<string | null>(null);
 
@@ -62,6 +68,43 @@ export default function EventsPage() {
     })();
   }, [filterType]);
 
+  // Muat event yang sudah di-RSVP agar tombolnya jadi "Terdaftar"
+  useEffect(() => {
+    if (!user) return;
+    (async () => {
+      try {
+        const res = await eventsApi.attended();
+        setRsvpedIds(new Set(res.data.map((e) => e.id)));
+      } catch {}
+    })();
+  }, [user]);
+
+  const handleRsvp = async (event: LocalEvent) => {
+    if (!user) {
+      router.push("/auth/login?redirect=/events");
+      return;
+    }
+    setRsvpLoadingId(event.id);
+    try {
+      await eventsApi.rsvp(event.id);
+      setRsvpedIds((prev) => new Set([...prev, event.id]));
+      setEvents((prev) =>
+        prev.map((e) => (e.id === event.id ? { ...e, attendeeCount: e.attendeeCount + 1 } : e))
+      );
+      setToast(`✓ RSVP "${event.title}" berhasil! Jangan lupa check-in saat event dimulai.`);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "RSVP gagal. Coba lagi.";
+      if (msg.includes("Already RSVPd")) {
+        setRsvpedIds((prev) => new Set([...prev, event.id]));
+        setToast("Kamu sudah terdaftar di event ini.");
+      } else {
+        setToast(msg.includes("full") ? "Event sudah penuh." : msg);
+      }
+    } finally {
+      setRsvpLoadingId(null);
+    }
+  };
+
   const filtered = useMemo(() => {
     let result = events;
     if (selectedCategory !== "semua") {
@@ -71,7 +114,7 @@ export default function EventsPage() {
   }, [events, selectedCategory]);
 
   const handleCheckInSuccess = () => {
-    setToast("✓ Check-in berhasil! Badge pending verifikasi admin.");
+    setToast("✓ Check-in berhasil! Badge kehadiran langsung masuk ke profilmu 🎉");
   };
 
   return (
@@ -147,7 +190,12 @@ export default function EventsPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {filtered.map((event, i) => (
                   <FadeInSection key={event.id} delay={Math.min(i * 80, 320)}>
-                    <EventCard event={event} />
+                    <EventCard
+                      event={event}
+                      onRsvp={handleRsvp}
+                      rsvped={rsvpedIds.has(event.id)}
+                      rsvpLoading={rsvpLoadingId === event.id}
+                    />
                   </FadeInSection>
                 ))}
               </div>

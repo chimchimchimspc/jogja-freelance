@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Modal from "../ui/Modal";
 import Button from "../ui/Button";
 import Toast from "../ui/Toast";
@@ -13,10 +13,16 @@ interface CheckInModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
+  initialCode?: string;
 }
 
-export default function CheckInModal({ event, isOpen, onClose, onSuccess }: CheckInModalProps) {
-  const [code, setCode] = useState("");
+export default function CheckInModal({ event, isOpen, onClose, onSuccess, initialCode = "" }: CheckInModalProps) {
+  const [code, setCode] = useState(initialCode);
+
+  // Isi otomatis saat modal dibuka dari scan QR
+  useEffect(() => {
+    if (isOpen && initialCode) setCode(initialCode);
+  }, [isOpen, initialCode]);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -86,8 +92,8 @@ export default function CheckInModal({ event, isOpen, onClose, onSuccess }: Chec
           <p className="text-sm text-[#565A5C] mb-3">
             Check-in untuk <strong>{event.title}</strong> berhasil
           </p>
-          <p className="text-xs text-[#E8B4D1] font-semibold">
-            🎤 Badge "Event Attendee" pending verifikasi admin
+          <p className="text-xs text-[#D64545] font-semibold">
+            🎤 Badge "Event Attendee" langsung masuk ke profilmu!
           </p>
         </div>
       ) : (

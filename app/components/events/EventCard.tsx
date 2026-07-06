@@ -7,6 +7,9 @@ import { assetUrl } from "../../lib/api";
 
 interface EventCardProps {
   event: Event;
+  onRsvp?: (event: Event) => void;
+  rsvped?: boolean;
+  rsvpLoading?: boolean;
 }
 
 const categoryGradients: Record<string, string> = {
@@ -23,7 +26,7 @@ const badgeColors: Record<EventType, "blue" | "orange" | "green" | "red" | "gray
   networking:  "red",
 };
 
-export default function EventCard({ event }: EventCardProps) {
+export default function EventCard({ event, onRsvp, rsvped = false, rsvpLoading = false }: EventCardProps) {
   const type = EVENT_TYPES[event.type];
   const full = isEventFull(event);
   const past = isEventPast(event);
@@ -31,8 +34,9 @@ export default function EventCard({ event }: EventCardProps) {
 
   return (
     <div className={`bg-white border border-[#E7E7E7] rounded-lg overflow-hidden transition-all duration-200 flex flex-col h-full min-h-[420px] ${past ? "opacity-70" : "hover:shadow-lg hover:-translate-y-0.5"}`}>
-      {/* Header — foto dari database bila ada, fallback gradasi warna tipe */}
-      <div className={`relative ${event.image ? "" : cardGradient} ${past ? "opacity-80" : ""}`}>
+      {/* Header — foto dari database bila ada, fallback gradasi warna tipe.
+          Tinggi TETAP (h-32) agar semua kartu seragam apa pun panjang judulnya */}
+      <div className={`relative h-32 overflow-hidden flex-shrink-0 ${event.image ? "" : cardGradient} ${past ? "opacity-80" : ""}`}>
         {event.image && (
           <>
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -40,7 +44,7 @@ export default function EventCard({ event }: EventCardProps) {
             <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-black/20" />
           </>
         )}
-        <div className="relative p-4 flex items-start justify-between gap-2 min-h-[92px]">
+        <div className="relative p-4 flex items-start justify-between gap-2 h-full">
           <div className="flex-1 min-w-0">
             <h3 className="text-lg font-bold text-white mb-1 line-clamp-2">{event.title}</h3>
             <p className="text-sm text-white/70 line-clamp-1">{event.organizerName}</p>
@@ -109,11 +113,24 @@ export default function EventCard({ event }: EventCardProps) {
               <CheckCircle2 className="w-4 h-4" />
               Selesai
             </Button>
+          ) : rsvped ? (
+            <Button
+              size="sm"
+              fullWidth
+              disabled
+              title="Kamu sudah terdaftar di event ini"
+              className="!bg-green-600 !text-white opacity-90"
+            >
+              <CheckCircle2 className="w-4 h-4" />
+              Terdaftar
+            </Button>
           ) : (
             <Button
               size="sm"
               fullWidth
-              disabled={full}
+              disabled={full || rsvpLoading}
+              loading={rsvpLoading}
+              onClick={() => onRsvp?.(event)}
               title={full ? "Event sudah penuh" : "RSVP ke event ini"}
             >
               {full ? "Penuh" : "RSVP"}

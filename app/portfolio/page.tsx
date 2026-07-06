@@ -202,16 +202,18 @@ export default function PortfolioPage() {
             )}
           </section>
 
-          {/* Event yang diikuti */}
+          {/* Event yang benar-benar DIHADIRI (sudah check-in di lokasi) */}
           <section>
             <h2 className="text-sm font-bold text-[#D64545] uppercase tracking-wide mb-3 flex items-center gap-2">
-              <Calendar className="w-4 h-4" /> Event & Workshop yang Diikuti
+              <Calendar className="w-4 h-4" /> Event & Workshop yang Dihadiri
             </h2>
-            {events.length === 0 ? (
-              <p className="text-sm text-[#6B6880] italic">Belum ada event tercatat.</p>
+            {events.filter((ev) => ev.checked_in).length === 0 ? (
+              <p className="text-sm text-[#6B6880] italic">
+                Belum ada event yang dihadiri — event masuk ke sini setelah kamu check-in di lokasi.
+              </p>
             ) : (
               <div className="space-y-3">
-                {events.map((ev) => (
+                {events.filter((ev) => ev.checked_in).map((ev) => (
                   <div key={ev.id} className="flex items-start justify-between gap-3 border-l-2 border-[#D64545]/30 pl-4 py-1">
                     <div className="min-w-0">
                       <p className="text-sm font-bold text-[#232F3E]">{ev.title}</p>
@@ -221,11 +223,9 @@ export default function PortfolioPage() {
                         {ev.location_name ? ` · ${ev.location_name}` : ""}
                       </p>
                     </div>
-                    {ev.checked_in && (
-                      <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-green-100 text-green-700 flex-shrink-0">
-                        ✓ Hadir
-                      </span>
-                    )}
+                    <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-green-100 text-green-700 flex-shrink-0">
+                      ✓ Hadir
+                    </span>
                   </div>
                 ))}
               </div>

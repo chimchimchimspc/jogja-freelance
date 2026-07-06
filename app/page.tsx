@@ -1,4 +1,6 @@
 "use client";
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { useAuth } from "./context/AuthContext";
 import Header from "./components/layout/Header";
 import Footer from "./components/layout/Footer";
@@ -15,6 +17,14 @@ import EmployerHome from "./components/sections/EmployerHome";
 
 export default function HomePage() {
   const { user } = useAuth();
+  const router = useRouter();
+
+  // Admin tidak punya beranda user — langsung ke panel admin
+  useEffect(() => {
+    if (user?.role === "admin") router.replace("/admin");
+  }, [user, router]);
+
+  if (user?.role === "admin") return null;
 
   if (user) {
     const isEmployer = user.role === "employer" || user.role === "event_organizer";

@@ -32,9 +32,15 @@ export default function LoginForm() {
     if (!validate()) return;
     setLoading(true);
     try {
-      await login(form.email, form.password);
+      const u = await login(form.email, form.password);
+      // Arahkan sesuai role: admin → panel admin, pengelola → dashboard employer
+      const target =
+        u.role === "admin" ? "/admin"
+        : u.role === "employer" || u.role === "event_organizer"
+          ? (redirectTo !== "/" ? redirectTo : "/employer")
+          : redirectTo;
       setToast({ message: "Berhasil masuk! Mengarahkan...", type: "success" });
-      setTimeout(() => router.push(redirectTo), 1200);
+      setTimeout(() => router.push(target), 1200);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Email atau password salah.";
       setToast({ message: msg, type: "error" });

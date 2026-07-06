@@ -123,7 +123,7 @@ export default function ApplicationsPage() {
             {TABS.map((t) => (
               <button key={t.key} onClick={() => setActiveTab(t.key)}
                 className={`flex-1 text-xs sm:text-sm py-2 px-2 rounded-md font-semibold transition-colors ${
-                  activeTab === t.key ? "bg-[#E8B4D1] text-white" : "text-[#565A5C] hover:bg-[#F1F1F1]"
+                  activeTab === t.key ? "bg-[#D64545] text-white" : "text-[#565A5C] hover:bg-[#F1F1F1]"
                 }`}>
                 {t.label}
               </button>

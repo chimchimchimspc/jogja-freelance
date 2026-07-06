@@ -22,7 +22,7 @@ export default function BadgeGrid({ earnedBadges }: BadgeGridProps) {
     <div className="bg-white border border-[#E7E7E7] rounded-lg p-6">
       <div className="flex items-center justify-between mb-5">
         <h2 className="text-lg font-bold text-[#232F3E]">Badge & Achievements</h2>
-        <span className="text-sm font-semibold text-[#E8B4D1]">
+        <span className="text-sm font-semibold text-[#D64545]">
           {earnedBadges.length}/{ALL_BADGES.length}
         </span>
       </div>
@@ -55,7 +55,7 @@ export default function BadgeGrid({ earnedBadges }: BadgeGridProps) {
                   <p className="font-bold">{badge.name}</p>
                   <p className="text-[#6B6880] mt-1">{badge.description}</p>
                   {isEarned && (
-                    <p className="text-[#E8B4D1] mt-1.5 font-semibold flex items-center gap-1">
+                    <p className="text-[#D64545] mt-1.5 font-semibold flex items-center gap-1">
                       <Share2 className="w-3 h-3" /> Shareable!
                     </p>
                   )}

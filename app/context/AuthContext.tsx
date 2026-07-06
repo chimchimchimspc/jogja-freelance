@@ -16,7 +16,7 @@ export interface User {
 interface AuthContextType {
   user: User | null;
   isLoading: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<User>;
   register: (data: {
     email: string;
     password: string;
@@ -78,6 +78,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setToken(res.data.token);
       setStoredUser(u);
       setUser(u);
+      return u;
     } finally {
       setIsLoading(false);
     }

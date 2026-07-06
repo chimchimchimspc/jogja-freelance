@@ -82,7 +82,7 @@ export default function ProfileHeader({ profile, isOwnProfile = false }: Profile
               <div className="flex items-center gap-2">
                 <span className="text-2xl">{LEVEL_ICON[profile.level]}</span>
                 <div>
-                  <p className="text-xs font-bold text-[#E8B4D1]">Level {profile.level}</p>
+                  <p className="text-xs font-bold text-[#D64545]">Level {profile.level}</p>
                   <p className="text-xs text-[#565A5C]">{profile.earnedBadges.length} badge</p>
                 </div>
               </div>
@@ -127,7 +127,7 @@ export default function ProfileHeader({ profile, isOwnProfile = false }: Profile
             {bioIsLong && (
               <button
                 onClick={() => setBioExpanded((v) => !v)}
-                className="mt-1 text-xs font-semibold text-[#146EB4] hover:underline"
+                className="mt-1 text-xs font-semibold text-[#D64545] hover:underline"
               >
                 {bioExpanded ? "Sembunyikan" : "Lihat selengkapnya"}
               </button>
@@ -146,7 +146,7 @@ export default function ProfileHeader({ profile, isOwnProfile = false }: Profile
         ].map((s) => (
           <div key={s.label} className="text-center">
             <div className="flex items-center justify-center gap-1.5 mb-1">
-              <s.icon className="w-4 h-4 text-[#E8B4D1]" />
+              <s.icon className="w-4 h-4 text-[#D64545]" />
               <span className="text-xs text-[#565A5C]">{s.label}</span>
             </div>
             <p className={`font-bold text-[#232F3E] ${s.sm ? "text-xs" : "text-sm"}`}>
@@ -167,7 +167,7 @@ export default function ProfileHeader({ profile, isOwnProfile = false }: Profile
             {profile.skills.map((s) => (
               <span
                 key={s}
-                className="text-xs bg-blue-50 text-[#146EB4] px-3 py-1.5 rounded-full font-semibold"
+                className="text-xs bg-[#FFF5F5] text-[#D64545] px-3 py-1.5 rounded-full font-semibold"
               >
                 {s}
               </span>
@@ -182,7 +182,7 @@ export default function ProfileHeader({ profile, isOwnProfile = false }: Profile
               href={profile.portfolioUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 text-sm text-[#146EB4] hover:underline font-semibold"
+              className="inline-flex items-center gap-1.5 text-sm text-[#D64545] hover:underline font-semibold"
             >
               <Share2 className="w-4 h-4" />
               Kunjungi Portfolio

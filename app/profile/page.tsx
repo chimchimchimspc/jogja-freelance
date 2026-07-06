@@ -123,18 +123,18 @@ export default function ProfilePage() {
           {/* Passport Journey */}
           <div className="bg-white border border-[#E7E7E7] rounded-lg p-6 mt-6">
             <div className="flex items-center gap-2 mb-4">
-              <Calendar className="w-5 h-5 text-[#E8B4D1]" />
+              <Calendar className="w-5 h-5 text-[#D64545]" />
               <h2 className="text-lg font-bold text-[#232F3E]">Jogja Passport Journey</h2>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-center">
-                <p className="text-3xl font-bold text-[#146EB4]">{profile.passportDaysCompleted}</p>
+              <div className="bg-[#FFF5F5] border border-[#D64545]/20 rounded-lg p-4 text-center">
+                <p className="text-3xl font-bold text-[#D64545]">{profile.passportDaysCompleted}</p>
                 <p className="text-sm text-[#565A5C] mt-1">Hari Selesai</p>
                 <p className="text-xs text-[#565A5C] mt-2">dari 30 hari total</p>
               </div>
 
-              <div className="bg-[#F1F1F1] border border-[#E7E7E7] rounded-lg p-4">
+              <div className="bg-[#F8F6FF] border border-[#EAE6F5] rounded-lg p-4">
                 <p className="text-xs font-bold text-[#565A5C] mb-2">Progress</p>
                 <ProgressBar value={profile.passportDaysCompleted} max={30} showPercent color="orange" size="lg" />
                 <p className="text-xs text-[#565A5C] mt-2">
@@ -142,8 +142,8 @@ export default function ProfilePage() {
                 </p>
               </div>
 
-              <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 text-center">
-                <p className="text-lg font-bold text-[#EC7211]">Hari {nextMilestone}</p>
+              <div className="bg-[#FFF5F5] border border-[#D64545]/20 rounded-lg p-4 text-center">
+                <p className="text-lg font-bold text-[#D64545]">Hari {nextMilestone}</p>
                 <p className="text-sm text-[#565A5C] mt-1">Milestone Berikutnya</p>
                 <p className="text-xs text-[#565A5C] mt-2">{daysToMilestone} hari lagi</p>
               </div>
@@ -167,7 +167,7 @@ export default function ProfilePage() {
           {/* Project Statistics */}
           <div className="bg-white border border-[#E7E7E7] rounded-lg p-6 mt-6">
             <div className="flex items-center gap-2 mb-4">
-              <TrendingUp className="w-5 h-5 text-[#E8B4D1]" />
+              <TrendingUp className="w-5 h-5 text-[#D64545]" />
               <h2 className="text-lg font-bold text-[#232F3E]">Statistik Pekerjaan</h2>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">

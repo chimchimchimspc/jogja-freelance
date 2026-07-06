@@ -49,6 +49,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
   const [event, setEvent] = useState<LocalEvent | null>(null);
   const [organizer, setOrganizer] = useState<{ company?: string; logo?: string; industry?: string }>({});
   const [loading, setLoading] = useState(true);
+  const [qrCode, setQrCode] = useState<string>("");
   const [showCheckIn, setShowCheckIn] = useState(false);
   const [isAttending, setIsAttending] = useState(false);
   const [rsvpLoading, setRsvpLoading] = useState(false);
@@ -72,6 +73,42 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
       }
     })();
   }, [id]);
+
+  // Cek apakah user sudah RSVP event ini (mis. dari kartu di halaman Events)
+  useEffect(() => {
+    if (!user) return;
+    (async () => {
+      try {
+        const res = await eventsApi.attended();
+        const mine = res.data.find((e) => e.id === id);
+        if (mine) {
+          setIsAttending(true);
+          if (mine.checked_in) setCheckedIn(true);
+        }
+      } catch {}
+    })();
+  }, [id, user]);
+
+  // Datang dari scan QR pengelola (?checkin=KODE):
+  // auto-RSVP bila belum, lalu buka modal check-in dengan kode terisi
+  useEffect(() => {
+    if (loading || !event || !user || checkedIn) return;
+    const code = new URLSearchParams(window.location.search).get("checkin");
+    if (!code) return;
+    setQrCode(code.toUpperCase());
+    (async () => {
+      if (!isAttending) {
+        try {
+          await eventsApi.rsvp(event.id);
+          setIsAttending(true);
+        } catch {
+          setIsAttending(true); // kemungkinan sudah RSVP
+        }
+      }
+      setShowCheckIn(true);
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, event, user]);
 
   const handleRsvp = async () => {
     if (!user) {
@@ -358,11 +395,12 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
       <CheckInModal
         event={showCheckIn ? event : null}
         isOpen={showCheckIn}
+        initialCode={qrCode}
         onClose={() => setShowCheckIn(false)}
         onSuccess={() => {
           setCheckedIn(true);
           setShowCheckIn(false);
-          setToast({ message: "✓ Check-in berhasil! Badge menunggu verifikasi admin.", type: "success" });
+          setToast({ message: "✓ Check-in berhasil! Badge kehadiran langsung masuk ke profilmu 🎉", type: "success" });
         }}
       />
 

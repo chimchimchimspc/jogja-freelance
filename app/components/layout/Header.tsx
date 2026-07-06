@@ -13,13 +13,13 @@ import { assetUrl } from "../../lib/api";
 const GUEST_NAV_LINKS = [
   { href: "/jobs",     label: "Lowongan" },
   { href: "/events",   label: "Events" },
-  { href: "/passport", label: "Panduan" },
+  { href: "/passport", label: "Passport" },
 ];
 
 const FREELANCER_NAV_LINKS = [
   { href: "/jobs",     label: "Lowongan" },
   { href: "/events",   label: "Events" },
-  { href: "/passport", label: "Panduan" },
+  { href: "/passport", label: "Passport" },
 ];
 
 const RECRUITER_NAV_LINKS = [
