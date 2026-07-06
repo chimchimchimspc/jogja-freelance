@@ -24,10 +24,11 @@ export interface ApiEvent {
   price?: number;
   registration_url?: string;
   skills: string[];
+  status?: "pending_review" | "active" | "rejected" | "completed";
 }
 
 export const eventsApi = {
-  list: (query: { page?: number; limit?: number; type?: string; upcoming?: boolean; past?: boolean } = {}) => {
+  list: (query: { page?: number; limit?: number; type?: string; upcoming?: boolean; past?: boolean; search?: string } = {}) => {
     const params = new URLSearchParams();
     Object.entries(query).forEach(([k, v]) => {
       if (v !== undefined) params.set(k, String(v));
@@ -97,4 +98,8 @@ export const eventsApi = {
       `/events/${id}/check-in`,
       { check_in_code }
     ),
+
+  // Pengelola menandai event miliknya selesai
+  complete: (id: string) =>
+    api.put<ApiResponse<{ id: string; status: string }>>(`/events/${id}/complete`, {}),
 };

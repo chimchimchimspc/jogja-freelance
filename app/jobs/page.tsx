@@ -1,5 +1,6 @@
 "use client";
-import { useState, useEffect, useCallback } from "react";
+import { Suspense, useState, useEffect, useCallback } from "react";
+import { useSearchParams } from "next/navigation";
 import Header from "../components/layout/Header";
 import Footer from "../components/layout/Footer";
 import JobCard from "../components/jobs/JobCard";
@@ -42,9 +43,13 @@ const SORT_OPTIONS = [
   { value: "popular",  label: "Paling Populer" },
 ];
 
-export default function JobsPage() {
+function JobsPageInner() {
   const { user } = useAuth();
-  const [filters, setFilters]           = useState<Filters>(DEFAULT_FILTERS);
+  const searchParams = useSearchParams();
+  const [filters, setFilters]           = useState<Filters>(() => ({
+    ...DEFAULT_FILTERS,
+    search: searchParams.get("search") ?? "",
+  }));
   const [sort, setSort]                 = useState("newest");
   const [showMobileFilter, setShowMobileFilter] = useState(false);
   const [applyJob, setApplyJob]         = useState<ReturnType<typeof adaptJob> | null>(null);
@@ -223,5 +228,13 @@ export default function JobsPage() {
         <Toast message={toast} type="success" onClose={() => setToast(null)} duration={5000} />
       )}
     </>
+  );
+}
+
+export default function JobsPage() {
+  return (
+    <Suspense fallback={<main className="flex-1 bg-[#F1F1F1] py-16 text-center text-sm text-[#565A5C]">Memuat…</main>}>
+      <JobsPageInner />
+    </Suspense>
   );
 }

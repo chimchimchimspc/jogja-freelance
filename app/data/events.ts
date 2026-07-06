@@ -21,6 +21,7 @@ export interface Event {
   isFree: boolean;
   price?: number;
   registrationUrl?: string;
+  status?: "pending_review" | "active" | "rejected" | "completed";
 }
 
 export interface UserEventAttendance {

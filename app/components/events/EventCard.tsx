@@ -29,7 +29,8 @@ const badgeColors: Record<EventType, "blue" | "orange" | "green" | "red" | "gray
 export default function EventCard({ event, onRsvp, rsvped = false, rsvpLoading = false }: EventCardProps) {
   const type = EVENT_TYPES[event.type];
   const full = isEventFull(event);
-  const past = isEventPast(event);
+  // "Selesai" bila pengelola menandainya manual (status completed) ATAU tanggalnya sudah lewat
+  const past = event.status === "completed" || isEventPast(event);
   const cardGradient = categoryGradients[event.type] || categoryGradients.workshop;
 
   return (

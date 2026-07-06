@@ -9,6 +9,7 @@ import { useAuth, type User } from "../../context/AuthContext";
 import { notificationsApi, type Notification } from "../../lib/notifications.api";
 import { chatApi } from "../../lib/chat.api";
 import { assetUrl } from "../../lib/api";
+import SearchDropdown from "./SearchDropdown";
 
 const GUEST_NAV_LINKS = [
   { href: "/jobs",     label: "Lowongan" },
@@ -56,11 +57,9 @@ export default function Header() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [notifOpen,  setNotifOpen]  = useState(false);
   const [notifClosing, setNotifClosing] = useState(false);
-  const [search,     setSearch]     = useState("");
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadChats, setUnreadChats] = useState(0);
   const pathname  = usePathname();
-  const inputRef  = useRef<HTMLInputElement>(null);
   const notifRef  = useRef<HTMLDivElement>(null);
   const navLinks = getNavLinks(user?.role);
 
@@ -118,10 +117,6 @@ export default function Header() {
   };
 
   useEffect(() => {
-    if (searchOpen) inputRef.current?.focus();
-  }, [searchOpen]);
-
-  useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (notifRef.current && !notifRef.current.contains(event.target as Node)) {
         setNotifClosing(true);
@@ -171,33 +166,18 @@ export default function Header() {
         {/* Spacer */}
         <div className="flex-1" />
 
-        {/* Search bar expandable */}
+        {/* Search bar expandable — dengan rekomendasi hasil lowongan & event */}
         <div className="hidden sm:flex items-center">
           <div
-            className="flex items-center overflow-hidden transition-all duration-300"
-            style={{ width: searchOpen ? 220 : 0, opacity: searchOpen ? 1 : 0 }}
+            className="flex items-center overflow-visible transition-all duration-300"
+            style={{ width: searchOpen ? 260 : 0, opacity: searchOpen ? 1 : 0 }}
           >
-            <div className="relative w-full">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#565A5C]" />
-              <input
-                ref={inputRef}
-                type="text"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Cari lowongan, skill, event..."
-                className="w-full pl-9 pr-4 py-2 text-sm border border-[#E0E0E0] rounded-lg bg-[#F8F8F8] text-[#232F3E] placeholder:text-[#999] focus:outline-none focus:border-[#D64545] focus:ring-2 focus:ring-[#D64545]/10"
-              />
-            </div>
+            {searchOpen && (
+              <SearchDropdown variant="desktop" onNavigate={() => setSearchOpen(false)} />
+            )}
           </div>
           <button
-            onClick={() => {
-              if (searchOpen) {
-                setSearchOpen(false);
-                setSearch("");
-              } else {
-                setSearchOpen(true);
-              }
-            }}
+            onClick={() => setSearchOpen((v) => !v)}
             className="p-1.5 hover:bg-[#F0F0F0] rounded transition-colors ml-1"
             aria-label="Toggle search"
           >
@@ -357,14 +337,7 @@ export default function Header() {
       >
         {/* Mobile search */}
         <div className="px-4 pb-2">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#565A5C]" />
-            <input
-              type="text"
-              placeholder="Cari lowongan atau event..."
-              className="w-full pl-9 pr-4 py-2 text-sm rounded-lg border border-[#E0E0E0] bg-[#F8F8F8] text-[#232F3E] placeholder:text-[#999] focus:outline-none"
-            />
-          </div>
+          <SearchDropdown variant="mobile" onNavigate={() => setMenuOpen(false)} />
         </div>
         {navLinks.map((l) => {
           const isActive = l.href === activeHref;

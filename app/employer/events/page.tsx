@@ -5,9 +5,12 @@ import Header from "../../components/layout/Header";
 import Footer from "../../components/layout/Footer";
 import {
   Users, Clock, Plus, MapPin, Building2,
-  CalendarDays, Loader2, Hourglass, PartyPopper, ChevronRight,
+  CalendarDays, Loader2, Hourglass, PartyPopper, ChevronRight, CheckCircle2,
 } from "lucide-react";
 import Link from "next/link";
+import Modal from "../../components/ui/Modal";
+import Button from "../../components/ui/Button";
+import Toast from "../../components/ui/Toast";
 import { useAuth } from "../../context/AuthContext";
 import { profileApi, type ApiEmployerProfile } from "../../lib/profile.api";
 import { eventsApi, type ApiEvent } from "../../lib/events.api";
@@ -19,6 +22,7 @@ const statusBadge: Record<string, { label: string; cls: string }> = {
   active:         { label: "Aktif",           cls: "bg-green-100 text-green-700" },
   pending_review: { label: "Menunggu Review", cls: "bg-yellow-100 text-yellow-700" },
   rejected:       { label: "Ditolak",         cls: "bg-red-100 text-red-700" },
+  completed:      { label: "Selesai",         cls: "bg-gray-100 text-gray-500" },
   closed:         { label: "Selesai",         cls: "bg-gray-100 text-gray-500" },
 };
 
@@ -38,6 +42,26 @@ export default function EmployerEventsDashboard() {
   const [events, setEvents] = useState<MyEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [completeTarget, setCompleteTarget] = useState<MyEvent | null>(null);
+  const [completing, setCompleting] = useState(false);
+  const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
+
+  const handleComplete = async () => {
+    if (!completeTarget) return;
+    setCompleting(true);
+    try {
+      await eventsApi.complete(completeTarget.id);
+      setEvents((prev) =>
+        prev.map((e) => (e.id === completeTarget.id ? { ...e, status: "completed" } : e))
+      );
+      setToast({ message: `"${completeTarget.title}" ditandai selesai.`, type: "success" });
+      setCompleteTarget(null);
+    } catch (e: unknown) {
+      setToast({ message: e instanceof Error ? e.message : "Gagal menandai event selesai.", type: "error" });
+    } finally {
+      setCompleting(false);
+    }
+  };
 
   useEffect(() => {
     if (authLoading) return;
@@ -233,14 +257,24 @@ export default function EmployerEventsDashboard() {
                           </div>
                         )}
 
-                        {Number(ev.attendee_count) > 0 && (
-                          <Link
-                            href={`/employer/events/${ev.id}/attendees`}
-                            className="flex items-center gap-1 text-sm text-[#D64545] hover:underline font-semibold mt-3"
-                          >
-                            Lihat Peserta <ChevronRight className="w-4 h-4" />
-                          </Link>
-                        )}
+                        <div className="flex items-center gap-4 mt-3 flex-wrap">
+                          {Number(ev.attendee_count) > 0 && (
+                            <Link
+                              href={`/employer/events/${ev.id}/attendees`}
+                              className="flex items-center gap-1 text-sm text-[#D64545] hover:underline font-semibold"
+                            >
+                              Lihat Peserta <ChevronRight className="w-4 h-4" />
+                            </Link>
+                          )}
+                          {ev.status === "active" && (
+                            <button
+                              onClick={() => setCompleteTarget(ev)}
+                              className="flex items-center gap-1.5 text-sm text-gray-600 hover:text-[#232F3E] font-semibold ml-auto"
+                            >
+                              <CheckCircle2 className="w-4 h-4" /> Tandai Selesai
+                            </button>
+                          )}
+                        </div>
                       </div>
                     );
                   })}
@@ -290,6 +324,35 @@ export default function EmployerEventsDashboard() {
         </div>
       </main>
       <Footer />
+
+      <Modal
+        isOpen={!!completeTarget}
+        onClose={() => setCompleteTarget(null)}
+        title="Tandai Event Selesai?"
+        size="sm"
+      >
+        <div>
+          <p className="text-sm text-[#6B6880] mb-5">
+            <strong className="text-[#1E1B2E]">{completeTarget?.title}</strong> akan ditandai selesai
+            dan tampil sebagai "Selesai" di halaman freelancer. Peserta tidak bisa RSVP lagi setelah ini.
+          </p>
+          <div className="flex gap-2">
+            <Button fullWidth size="lg" loading={completing} onClick={handleComplete}>
+              Ya, Tandai Selesai
+            </Button>
+            <button
+              onClick={() => setCompleteTarget(null)}
+              className="px-5 bg-[#F8F6FF] hover:bg-[#EAE6F5] text-[#6B6880] rounded-lg font-semibold text-sm transition-colors"
+            >
+              Batal
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      {toast && (
+        <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} duration={4000} />
+      )}
     </>
   );
 }

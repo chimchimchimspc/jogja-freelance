@@ -5,10 +5,13 @@ import Header from "../../../components/layout/Header";
 import Footer from "../../../components/layout/Footer";
 import {
   ChevronLeft, Users, CheckCircle, Loader2, Calendar, MapPin,
-  QrCode, Copy, ChevronRight, KeyRound,
+  QrCode, Copy, ChevronRight, KeyRound, CheckCircle2,
 } from "lucide-react";
 import Link from "next/link";
 import QRCode from "qrcode";
+import Modal from "../../../components/ui/Modal";
+import Button from "../../../components/ui/Button";
+import Toast from "../../../components/ui/Toast";
 import { useAuth } from "../../../context/AuthContext";
 import { eventsApi, type ApiEvent } from "../../../lib/events.api";
 
@@ -16,6 +19,7 @@ const STATUS_BADGE: Record<string, { label: string; cls: string }> = {
   active:         { label: "Aktif",           cls: "bg-green-100 text-green-700" },
   pending_review: { label: "Menunggu Review", cls: "bg-yellow-100 text-yellow-700" },
   rejected:       { label: "Ditolak",         cls: "bg-red-100 text-red-700" },
+  completed:      { label: "Selesai",         cls: "bg-gray-100 text-gray-500" },
   closed:         { label: "Selesai",         cls: "bg-gray-100 text-gray-500" },
 };
 
@@ -41,6 +45,23 @@ export default function EmployerEventDetailPage({ params }: { params: Promise<{ 
   const [copied, setCopied] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showComplete, setShowComplete] = useState(false);
+  const [completing, setCompleting] = useState(false);
+  const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
+
+  const handleComplete = async () => {
+    setCompleting(true);
+    try {
+      await eventsApi.complete(id);
+      setEvent((prev) => (prev ? { ...prev, status: "completed" } : prev));
+      setToast({ message: "Event ditandai selesai.", type: "success" });
+      setShowComplete(false);
+    } catch (e: unknown) {
+      setToast({ message: e instanceof Error ? e.message : "Gagal menandai event selesai.", type: "error" });
+    } finally {
+      setCompleting(false);
+    }
+  };
 
   useEffect(() => {
     if (authLoading) return;
@@ -119,15 +140,27 @@ export default function EmployerEventDetailPage({ params }: { params: Promise<{ 
             <Link href="/employer/events" className="flex items-center gap-1.5 text-[#6B6880] hover:text-[#D64545] text-sm mb-4 transition-colors">
               <ChevronLeft className="w-4 h-4" /> Event Saya
             </Link>
-            <div className="flex items-center gap-2 flex-wrap mb-1">
-              <h1 className="text-2xl font-bold">{event.title}</h1>
-              <span className={`text-xs px-2.5 py-1 rounded-full font-semibold ${badge.cls}`}>{badge.label}</span>
-            </div>
-            <div className="flex flex-wrap gap-3 text-sm text-[#6B6880]">
-              <span>{EVENT_TYPE_LABEL[event.type] ?? event.type}</span>
-              <span className="flex items-center gap-1"><Calendar className="w-3.5 h-3.5" /> {fmtDate(event.event_date)}</span>
-              {event.location_name && (
-                <span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5" /> {event.location_name}</span>
+            <div className="flex items-start justify-between gap-4 flex-wrap">
+              <div>
+                <div className="flex items-center gap-2 flex-wrap mb-1">
+                  <h1 className="text-2xl font-bold">{event.title}</h1>
+                  <span className={`text-xs px-2.5 py-1 rounded-full font-semibold ${badge.cls}`}>{badge.label}</span>
+                </div>
+                <div className="flex flex-wrap gap-3 text-sm text-[#6B6880]">
+                  <span>{EVENT_TYPE_LABEL[event.type] ?? event.type}</span>
+                  <span className="flex items-center gap-1"><Calendar className="w-3.5 h-3.5" /> {fmtDate(event.event_date)}</span>
+                  {event.location_name && (
+                    <span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5" /> {event.location_name}</span>
+                  )}
+                </div>
+              </div>
+              {event.status === "active" && (
+                <button
+                  onClick={() => setShowComplete(true)}
+                  className="flex items-center gap-1.5 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-semibold rounded-lg transition-colors flex-shrink-0"
+                >
+                  <CheckCircle2 className="w-4 h-4" /> Tandai Selesai
+                </button>
               )}
             </div>
           </div>
@@ -241,6 +274,30 @@ export default function EmployerEventDetailPage({ params }: { params: Promise<{ 
         </div>
       </main>
       <Footer />
+
+      <Modal isOpen={showComplete} onClose={() => setShowComplete(false)} title="Tandai Event Selesai?" size="sm">
+        <div>
+          <p className="text-sm text-[#6B6880] mb-5">
+            <strong className="text-[#1E1B2E]">{event.title}</strong> akan ditandai selesai dan tampil
+            sebagai "Selesai" di halaman freelancer. Peserta tidak bisa RSVP lagi setelah ini.
+          </p>
+          <div className="flex gap-2">
+            <Button fullWidth size="lg" loading={completing} onClick={handleComplete}>
+              Ya, Tandai Selesai
+            </Button>
+            <button
+              onClick={() => setShowComplete(false)}
+              className="px-5 bg-[#F8F6FF] hover:bg-[#EAE6F5] text-[#6B6880] rounded-lg font-semibold text-sm transition-colors"
+            >
+              Batal
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      {toast && (
+        <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} duration={4000} />
+      )}
     </>
   );
 }

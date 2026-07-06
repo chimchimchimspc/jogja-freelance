@@ -38,6 +38,7 @@ function adaptEvent(e: ApiEvent): LocalEvent {
     isFree: e.is_free,
     price: e.price,
     registrationUrl: e.registration_url,
+    status: e.status,
   };
 }
 
@@ -167,6 +168,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
 
   const type = EVENT_TYPES[event.type];
   const full = !!event.attendeeLimit && event.attendeeCount >= event.attendeeLimit;
+  const isCompleted = event.status === "completed";
   const hasCoords = !!(event.latitude && event.longitude);
   const durationLabel =
     event.duration >= 60
@@ -200,7 +202,8 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
               <div className="flex-1">
                 <div className="flex items-center gap-2 mb-3">
                   <Badge label={`${type?.icon ?? ""} ${type?.label ?? event.type}`} color="orange" />
-                  {full && <Badge label="Penuh" color="red" />}
+                  {isCompleted && <Badge label="Selesai" color="gray" />}
+                  {!isCompleted && full && <Badge label="Penuh" color="red" />}
                   {event.isFree && <Badge label="Gratis" color="green" />}
                 </div>
                 <h1 className="text-3xl font-bold text-[#232F3E] mb-1">{event.title}</h1>
@@ -233,7 +236,12 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
 
             {/* CTA Buttons */}
             <div className="flex flex-wrap gap-3 mt-6">
-              {checkedIn ? (
+              {isCompleted ? (
+                <div className="flex items-center gap-2 px-6 py-3 bg-gray-100 border border-gray-200 rounded-lg">
+                  <CheckCircle className="w-5 h-5 text-gray-500" />
+                  <span className="font-semibold text-gray-600">Event ini sudah selesai</span>
+                </div>
+              ) : checkedIn ? (
                 <div className="flex items-center gap-2 px-6 py-3 bg-green-50 border border-green-200 rounded-lg">
                   <CheckCircle className="w-5 h-5 text-green-600" />
                   <span className="font-semibold text-green-700">Sudah Check-in</span>

@@ -1,12 +1,12 @@
 "use client";
-import { useState, useEffect, useMemo } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useState, useEffect, useMemo, useCallback } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Header from "../components/layout/Header";
 import Footer from "../components/layout/Footer";
 import EventCard from "../components/events/EventCard";
 import CheckInModal from "../components/events/CheckInModal";
 import Toast from "../components/ui/Toast";
-import { Calendar, Filter, X, Loader2 } from "lucide-react";
+import { Calendar, Search, X, Loader2 } from "lucide-react";
 import type { Event as LocalEvent, EventType } from "../data/events";
 import { EVENT_TYPES } from "../data/events";
 import FadeInSection from "../components/ui/FadeInSection";
@@ -38,14 +38,17 @@ function adaptEvent(e: ApiEvent): LocalEvent {
     isFree: e.is_free,
     price: e.price,
     registrationUrl: e.registration_url,
+    status: e.status,
   };
 }
 
-export default function EventsPage() {
+function EventsPageInner() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user } = useAuth();
   const [filterType, setFilterType] = useState<FilterType>("upcoming");
   const [selectedCategory, setSelectedCategory] = useState<EventType | "semua">("semua");
+  const [search, setSearch] = useState(searchParams.get("search") ?? "");
   const [checkInEvent, setCheckInEvent] = useState<LocalEvent | null>(null);
   const [toast, setToast] = useState<string | null>(null);
 
@@ -55,18 +58,27 @@ export default function EventsPage() {
   const [loading, setLoading]       = useState(true);
   const [error, setError]           = useState<string | null>(null);
 
+  const fetchEvents = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await eventsApi.list({
+        upcoming: filterType === "upcoming" ? true : undefined,
+        past: filterType === "past" ? true : undefined,
+        search: search.trim() || undefined,
+      });
+      setEvents(res.data.map(adaptEvent));
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Gagal memuat events");
+    } finally {
+      setLoading(false);
+    }
+  }, [filterType, search]);
+
   useEffect(() => {
-    (async () => {
-      try {
-        const res = await eventsApi.list({ upcoming: filterType === "upcoming" });
-        setEvents(res.data.map(adaptEvent));
-      } catch (e: unknown) {
-        setError(e instanceof Error ? e.message : "Gagal memuat events");
-      } finally {
-        setLoading(false);
-      }
-    })();
-  }, [filterType]);
+    const t = setTimeout(fetchEvents, 300);
+    return () => clearTimeout(t);
+  }, [fetchEvents]);
 
   // Muat event yang sudah di-RSVP agar tombolnya jadi "Terdaftar"
   useEffect(() => {
@@ -132,6 +144,24 @@ export default function EventsPage() {
         </div>
 
         <div className="max-w-7xl mx-auto px-4 py-6">
+          {/* Search */}
+          <div className="relative mb-4">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#565A5C]" />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Cari judul event, deskripsi, atau lokasi..."
+              className="w-full pl-9 pr-9 py-2.5 text-sm border border-[#CCCCCC] rounded-lg bg-white focus:outline-none focus:border-[#D64545] focus:ring-2 focus:ring-[#D64545]/10"
+            />
+            {search && (
+              <button onClick={() => setSearch("")}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-[#565A5C] hover:text-[#232F3E]">
+                <X className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+
           <div className="flex flex-col sm:flex-row gap-3 mb-6">
             <div className="flex gap-2 bg-white border border-[#E7E7E7] rounded-lg p-1">
               {(["upcoming", "past"] as const).map((f) => (
@@ -215,5 +245,13 @@ export default function EventsPage() {
 
       {toast && <Toast message={toast} type="success" onClose={() => setToast(null)} duration={5000} />}
     </>
+  );
+}
+
+export default function EventsPage() {
+  return (
+    <Suspense fallback={<main className="flex-1 bg-[#F1F1F1] py-16 text-center text-sm text-[#565A5C]">Memuat…</main>}>
+      <EventsPageInner />
+    </Suspense>
   );
 }
