@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
-import { Search, CheckCircle, XCircle, Eye, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
+import { Search, CheckCircle, XCircle, Eye, Loader2, ChevronLeft, ChevronRight, Trash2 } from "lucide-react";
 import Badge from "../../components/ui/Badge";
 import Button from "../../components/ui/Button";
 import Modal from "../../components/ui/Modal";
@@ -39,6 +39,7 @@ export default function AdminJobsPage() {
   const [previewJob, setPreviewJob] = useState<ApiAdminJob | null>(null);
   const [rejectJob, setRejectJob] = useState<ApiAdminJob | null>(null);
   const [rejectReason, setRejectReason] = useState("");
+  const [deleteJobTarget, setDeleteJobTarget] = useState<ApiAdminJob | null>(null);
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
 
   const loadJobs = useCallback(async () => {
@@ -81,6 +82,19 @@ export default function AdminJobsPage() {
       loadJobs();
     } catch (err: unknown) {
       setToast({ message: err instanceof Error ? err.message : "Gagal menolak lowongan.", type: "error" });
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!deleteJobTarget) return;
+    try {
+      await adminApi.deleteJob(deleteJobTarget.id);
+      setToast({ message: "Lowongan dihapus.", type: "success" });
+      setDeleteJobTarget(null);
+      setPreviewJob(null);
+      loadJobs();
+    } catch (err: unknown) {
+      setToast({ message: err instanceof Error ? err.message : "Gagal menghapus lowongan.", type: "error" });
     }
   };
 
@@ -171,6 +185,13 @@ export default function AdminJobsPage() {
                           </button>
                         </>
                       )}
+                      <button
+                        onClick={() => setDeleteJobTarget(job)}
+                        className="p-1.5 text-[#DC2C1E] hover:bg-red-50 rounded transition-colors"
+                        title="Hapus"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
                     </div>
                   </div>
                 );
@@ -210,14 +231,21 @@ export default function AdminJobsPage() {
         title="Detail Lowongan"
         size="md"
         footer={
-          previewJob?.status === "pending_review" && (
+          previewJob && (
             <>
-              <Button variant="danger" onClick={() => setRejectJob(previewJob)}>
-                <XCircle className="w-4 h-4" /> Tolak
+              <Button variant="danger" onClick={() => setDeleteJobTarget(previewJob)}>
+                <Trash2 className="w-4 h-4" /> Hapus
               </Button>
-              <Button onClick={() => handleApprove(previewJob.id)}>
-                <CheckCircle className="w-4 h-4" /> Setujui & Publikasikan
-              </Button>
+              {previewJob.status === "pending_review" && (
+                <>
+                  <Button variant="danger" onClick={() => setRejectJob(previewJob)}>
+                    <XCircle className="w-4 h-4" /> Tolak
+                  </Button>
+                  <Button onClick={() => handleApprove(previewJob.id)}>
+                    <CheckCircle className="w-4 h-4" /> Setujui & Publikasikan
+                  </Button>
+                </>
+              )}
             </>
           )
         }
@@ -278,6 +306,25 @@ export default function AdminJobsPage() {
           placeholder="Contoh: Budget tidak wajar, deskripsi tidak jelas..."
           rows={3}
         />
+      </Modal>
+
+      {/* Delete confirm modal */}
+      <Modal
+        isOpen={!!deleteJobTarget}
+        onClose={() => setDeleteJobTarget(null)}
+        title="Hapus Lowongan"
+        size="sm"
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setDeleteJobTarget(null)}>Batal</Button>
+            <Button variant="danger" onClick={handleDelete}>Ya, Hapus</Button>
+          </>
+        }
+      >
+        <p className="text-sm text-[#565A5C]">
+          Yakin ingin menghapus lowongan <strong>{deleteJobTarget?.title}</strong>? Tindakan ini tidak bisa dibatalkan
+          dan akan menghapus juga lamaran yang terkait.
+        </p>
       </Modal>
 
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}

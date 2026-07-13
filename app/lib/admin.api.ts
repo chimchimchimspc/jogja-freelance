@@ -51,7 +51,7 @@ export interface ApiPendingEvent {
 }
 
 export interface ApiAdminEvent extends ApiPendingEvent {
-  status: "pending_review" | "active" | "rejected";
+  status: "pending_review" | "active" | "rejected" | "completed";
   admin_notes: string | null;
   reviewed_at: string | null;
 }
@@ -114,6 +114,9 @@ export const adminApi = {
   rejectJob: (id: string, reason?: string) =>
     api.put<ApiResponse<null>>(`/admin/jobs/${id}/reject`, { reason }),
 
+  deleteJob: (id: string) =>
+    api.delete<ApiResponse<null>>(`/admin/jobs/${id}`),
+
   listEvents: (query: { page?: number; limit?: number; status?: string; search?: string } = {}) => {
     const params = new URLSearchParams(
       Object.entries(query).filter(([, v]) => v !== undefined && v !== "").map(([k, v]) => [k, String(v)])
@@ -127,6 +130,9 @@ export const adminApi = {
 
   rejectEvent: (id: string, reason?: string) =>
     api.put<ApiResponse<null>>(`/admin/events/${id}/reject`, { reason }),
+
+  deleteEvent: (id: string) =>
+    api.delete<ApiResponse<null>>(`/admin/events/${id}`),
 
   listUsers: (query: { page?: number; limit?: number; role?: string; search?: string } = {}) => {
     const params = new URLSearchParams(

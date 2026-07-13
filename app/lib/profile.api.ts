@@ -49,8 +49,17 @@ export interface UpdateEmployerProfileData {
   location?: string;
 }
 
+export interface ApiSkillOption {
+  id: string;
+  name: string;
+  category: string | null;
+}
+
 export const profileApi = {
   getOwn: () => api.get<ApiResponse<ApiProfile>>("/profile"),
+
+  getSkillOptions: () =>
+    api.get<ApiResponse<ApiSkillOption[]>>("/profile/skills"),
 
   getPublic: (userId: string) =>
     api.get<ApiResponse<ApiProfile>>(`/profile/${userId}`),

@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
-import { Search, CheckCircle, XCircle, Eye, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
+import { Search, CheckCircle, XCircle, Eye, Loader2, ChevronLeft, ChevronRight, Trash2 } from "lucide-react";
 import Badge from "../../components/ui/Badge";
 import Button from "../../components/ui/Button";
 import Modal from "../../components/ui/Modal";
@@ -8,18 +8,20 @@ import Toast from "../../components/ui/Toast";
 import { Textarea } from "../../components/ui/Input";
 import { adminApi, type ApiAdminEvent } from "../../lib/admin.api";
 
-type StatusFilter = "" | "pending_review" | "active" | "rejected";
+type StatusFilter = "" | "pending_review" | "active" | "completed" | "rejected";
 
 const TABS: { key: StatusFilter; label: string }[] = [
   { key: "",               label: "Semua" },
   { key: "pending_review", label: "Pending" },
   { key: "active",         label: "Aktif" },
+  { key: "completed",      label: "Selesai" },
   { key: "rejected",       label: "Ditolak" },
 ];
 
 const STATUS_BADGE: Record<ApiAdminEvent["status"], { label: string; color: "blue" | "orange" | "green" | "red" | "gray" }> = {
   pending_review: { label: "Pending", color: "orange" },
   active:         { label: "Aktif",   color: "green" },
+  completed:      { label: "Selesai", color: "blue" },
   rejected:       { label: "Ditolak", color: "red" },
 };
 
@@ -42,6 +44,7 @@ export default function AdminEventsPage() {
   const [previewEvent, setPreviewEvent] = useState<ApiAdminEvent | null>(null);
   const [rejectEvent, setRejectEvent] = useState<ApiAdminEvent | null>(null);
   const [rejectReason, setRejectReason] = useState("");
+  const [deleteEventTarget, setDeleteEventTarget] = useState<ApiAdminEvent | null>(null);
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
 
   const loadEvents = useCallback(async () => {
@@ -84,6 +87,19 @@ export default function AdminEventsPage() {
       loadEvents();
     } catch (err: unknown) {
       setToast({ message: err instanceof Error ? err.message : "Gagal menolak event.", type: "error" });
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!deleteEventTarget) return;
+    try {
+      await adminApi.deleteEvent(deleteEventTarget.id);
+      setToast({ message: "Event dihapus.", type: "success" });
+      setDeleteEventTarget(null);
+      setPreviewEvent(null);
+      loadEvents();
+    } catch (err: unknown) {
+      setToast({ message: err instanceof Error ? err.message : "Gagal menghapus event.", type: "error" });
     }
   };
 
@@ -174,6 +190,13 @@ export default function AdminEventsPage() {
                           </button>
                         </>
                       )}
+                      <button
+                        onClick={() => setDeleteEventTarget(ev)}
+                        className="p-1.5 text-[#DC2C1E] hover:bg-red-50 rounded transition-colors"
+                        title="Hapus"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
                     </div>
                   </div>
                 );
@@ -211,14 +234,21 @@ export default function AdminEventsPage() {
         title="Detail Event"
         size="md"
         footer={
-          previewEvent?.status === "pending_review" && (
+          previewEvent && (
             <>
-              <Button variant="danger" onClick={() => setRejectEvent(previewEvent)}>
-                <XCircle className="w-4 h-4" /> Tolak
+              <Button variant="danger" onClick={() => setDeleteEventTarget(previewEvent)}>
+                <Trash2 className="w-4 h-4" /> Hapus
               </Button>
-              <Button onClick={() => handleApprove(previewEvent.id)}>
-                <CheckCircle className="w-4 h-4" /> Setujui & Publikasikan
-              </Button>
+              {previewEvent.status === "pending_review" && (
+                <>
+                  <Button variant="danger" onClick={() => setRejectEvent(previewEvent)}>
+                    <XCircle className="w-4 h-4" /> Tolak
+                  </Button>
+                  <Button onClick={() => handleApprove(previewEvent.id)}>
+                    <CheckCircle className="w-4 h-4" /> Setujui & Publikasikan
+                  </Button>
+                </>
+              )}
             </>
           )
         }
@@ -282,6 +312,25 @@ export default function AdminEventsPage() {
           placeholder="Contoh: Lokasi tidak jelas, deskripsi tidak lengkap..."
           rows={3}
         />
+      </Modal>
+
+      {/* Delete confirm modal */}
+      <Modal
+        isOpen={!!deleteEventTarget}
+        onClose={() => setDeleteEventTarget(null)}
+        title="Hapus Event"
+        size="sm"
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setDeleteEventTarget(null)}>Batal</Button>
+            <Button variant="danger" onClick={handleDelete}>Ya, Hapus</Button>
+          </>
+        }
+      >
+        <p className="text-sm text-[#565A5C]">
+          Yakin ingin menghapus event <strong>{deleteEventTarget?.title}</strong>? Tindakan ini tidak bisa dibatalkan
+          dan akan menghapus juga RSVP yang terkait.
+        </p>
       </Modal>
 
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}

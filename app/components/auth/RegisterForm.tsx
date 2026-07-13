@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Input, Checkbox } from "../ui/Input";
 import Button from "../ui/Button";
@@ -8,11 +8,14 @@ import Link from "next/link";
 import { useAuth } from "../../context/AuthContext";
 import { Briefcase, Code2 } from "lucide-react";
 import GoogleLoginButton from "./GoogleLoginButton";
+import { profileApi } from "../../lib/profile.api";
 
-const SKILL_OPTIONS = [
-  "Web Development", "UI/UX Design", "Content Writing",
-  "Video Editing", "Social Media", "Logo Design",
-  "Mobile Development", "Photography",
+// Fallback kalau fetch daftar skill master dari server gagal —
+// harus nama skill yang benar-benar ada di tabel skills backend.
+const SKILL_OPTIONS_FALLBACK = [
+  "React", "Next.js", "TypeScript", "Node.js", "Laravel", "Flutter",
+  "Figma", "UI Design", "UX Design", "Photoshop", "Illustrator",
+  "Copywriting", "SEO Writing", "Premiere Pro", "Instagram", "TikTok",
 ];
 
 type RoleType = "freelancer" | "employer";
@@ -45,6 +48,13 @@ export default function RegisterForm() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
+  const [skillOptions, setSkillOptions] = useState<string[]>(SKILL_OPTIONS_FALLBACK);
+
+  useEffect(() => {
+    profileApi.getSkillOptions()
+      .then((res) => { if (res.data?.length) setSkillOptions(res.data.map((s) => s.name)); })
+      .catch(() => { /* pakai fallback */ });
+  }, []);
 
   const validate = () => {
     const e: Record<string, string> = {};
@@ -165,8 +175,8 @@ export default function RegisterForm() {
       {role === "freelancer" && (
         <div className="mb-6">
           <label className="block text-sm font-semibold mb-2 text-[#232F3E]">Pilih Skill (1-5)</label>
-          <div className="grid grid-cols-2 gap-2">
-            {SKILL_OPTIONS.map((skill) => (
+          <div className="grid grid-cols-2 gap-2 max-h-52 overflow-y-auto border border-[#E7E7E7] rounded-lg p-3">
+            {skillOptions.map((skill) => (
               <label key={skill} className="flex items-center gap-2 cursor-pointer">
                 <input type="checkbox" checked={form.skills.includes(skill)}
                   onChange={() => toggleSkill(skill)} className="w-4 h-4 accent-[#E8B4D1]" />

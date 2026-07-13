@@ -38,8 +38,8 @@ export default function CompleteReviewModal({
     if (!applicant) return;
     setSubmitting(true);
     try {
-      // 1. Tandai pekerjaan selesai
-      await jobsApi.updateApplicationStatus(applicant.applicationId, "completed");
+      // 1. Setujui hasil kerja (hanya valid dari status submitted_for_review)
+      await jobsApi.completeApplication(applicant.applicationId);
       // 2. Kirim ulasan → rating profil freelancer tersinkron otomatis di backend
       await reviewsApi.create({
         reviewee_id: applicant.freelancerId,
@@ -60,13 +60,13 @@ export default function CompleteReviewModal({
   const RATING_LABEL = ["", "Buruk", "Kurang", "Cukup", "Bagus", "Luar Biasa"];
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Selesaikan Pekerjaan & Beri Ulasan" size="md">
+    <Modal isOpen={isOpen} onClose={onClose} title="Setujui Hasil Kerja & Beri Ulasan" size="md">
       {applicant && (
         <div>
           <p className="text-sm text-[#6B6880] mb-5">
-            Tandai pekerjaan <strong className="text-[#1E1B2E]">{applicant.jobTitle ?? "ini"}</strong> selesai
-            dan beri ulasan untuk <strong className="text-[#1E1B2E]">{applicant.name}</strong>.
-            Ulasan akan tampil di profil & portofolionya.
+            Setujui hasil kerja <strong className="text-[#1E1B2E]">{applicant.jobTitle ?? "ini"}</strong> dan
+            beri ulasan untuk <strong className="text-[#1E1B2E]">{applicant.name}</strong>.
+            Rating & ulasan akan tampil di profil dan portofolionya.
           </p>
 
           {/* Rating bintang */}
@@ -115,7 +115,7 @@ export default function CompleteReviewModal({
 
           <div className="flex gap-2">
             <Button fullWidth size="lg" onClick={handleSubmit} loading={submitting}>
-              {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : "✓ Selesai & Kirim Ulasan"}
+              {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : "✓ Setujui & Kirim Ulasan"}
             </Button>
             <button
               onClick={onClose}

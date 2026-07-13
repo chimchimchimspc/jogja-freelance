@@ -43,9 +43,14 @@ export interface ApiApplication {
   expires_at: string;
   budget_min: number;
   budget_max: number;
+  work_note?: string | null;
+  employer_feedback?: string | null;
+  work_submitted_at?: string | null;
 }
 
-export type ApplicationStatus = "pending" | "reviewed" | "accepted" | "rejected" | "expired" | "completed";
+export type ApplicationStatus =
+  | "pending" | "reviewed" | "accepted" | "rejected" | "expired"
+  | "submitted_for_review" | "revision_requested" | "terminated" | "completed";
 
 export interface ApiEmployerApplication {
   id: string;
@@ -75,6 +80,9 @@ export interface ApiJobApplicant {
   passport_days_completed?: number;
   skills: string[];
   badge_count: number;
+  work_note?: string | null;
+  employer_feedback?: string | null;
+  work_submitted_at?: string | null;
 }
 
 export interface JobsQuery {
@@ -110,8 +118,22 @@ export const jobsApi = {
   applicantsForJob: (jobId: string) =>
     api.get<ApiResponse<ApiJobApplicant[]>>(`/applications/job/${jobId}`),
 
-  updateApplicationStatus: (id: string, status: "reviewed" | "accepted" | "rejected" | "completed") =>
+  updateApplicationStatus: (id: string, status: "reviewed" | "accepted" | "rejected") =>
     api.put<ApiResponse<null>>(`/applications/${id}/status`, { status }),
+
+  submitWork: (id: string, note?: string) =>
+    api.put<ApiResponse<{ status: ApplicationStatus; work_note: string | null; work_submitted_at: string }>>(
+      `/applications/${id}/submit-work`, { note }
+    ),
+
+  completeApplication: (id: string) =>
+    api.put<ApiResponse<null>>(`/applications/${id}/complete`, {}),
+
+  requestRevision: (id: string, note: string) =>
+    api.put<ApiResponse<null>>(`/applications/${id}/request-revision`, { note }),
+
+  terminateApplication: (id: string, note?: string) =>
+    api.put<ApiResponse<null>>(`/applications/${id}/terminate`, { note }),
 
   create: (data: Partial<ApiJob> & { skills?: string[]; requirements?: string[] }) =>
     api.post<ApiResponse<ApiJob>>("/jobs", data),

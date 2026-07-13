@@ -17,21 +17,24 @@ import CompleteReviewModal from "../../components/employer/CompleteReviewModal";
 type Tab = "" | ApplicationStatus;
 
 const TABS: { key: Tab; label: string }[] = [
-  { key: "",          label: "Semua" },
-  { key: "pending",   label: "Baru" },
-  { key: "reviewed",  label: "Direview" },
-  { key: "accepted",  label: "Diterima" },
-  { key: "completed", label: "Selesai" },
-  { key: "rejected",  label: "Ditolak" },
+  { key: "",                     label: "Semua" },
+  { key: "pending",              label: "Baru" },
+  { key: "accepted",             label: "Diterima" },
+  { key: "submitted_for_review", label: "Perlu Direview" },
+  { key: "completed",            label: "Selesai" },
+  { key: "rejected",             label: "Ditolak" },
 ];
 
 const STATUS_BADGE: Record<string, { label: string; cls: string }> = {
-  pending:   { label: "Baru",     cls: "bg-blue-100 text-blue-700" },
-  reviewed:  { label: "Direview", cls: "bg-yellow-100 text-yellow-700" },
-  accepted:  { label: "Diterima", cls: "bg-green-100 text-green-700" },
-  completed: { label: "Selesai",  cls: "bg-purple-100 text-purple-700" },
-  rejected:  { label: "Ditolak",  cls: "bg-red-100 text-red-700" },
-  expired:   { label: "Expired",  cls: "bg-gray-100 text-gray-500" },
+  pending:               { label: "Baru",           cls: "bg-blue-100 text-blue-700" },
+  reviewed:              { label: "Direview",       cls: "bg-yellow-100 text-yellow-700" },
+  accepted:              { label: "Diterima",       cls: "bg-green-100 text-green-700" },
+  submitted_for_review:  { label: "Perlu Direview", cls: "bg-orange-100 text-orange-700" },
+  revision_requested:    { label: "Revisi Diminta", cls: "bg-orange-100 text-orange-700" },
+  completed:             { label: "Selesai",        cls: "bg-purple-100 text-purple-700" },
+  terminated:            { label: "Diberhentikan",  cls: "bg-red-100 text-red-700" },
+  rejected:              { label: "Ditolak",        cls: "bg-red-100 text-red-700" },
+  expired:               { label: "Expired",        cls: "bg-gray-100 text-gray-500" },
 };
 
 const levelBadge: Record<string, string> = {
@@ -167,7 +170,7 @@ export default function ApplicantsPage() {
               {filtered.map((a) => {
                 const st = STATUS_BADGE[a.status] ?? STATUS_BADGE.pending;
                 const busy = updating === a.id;
-                const decided = a.status === "accepted" || a.status === "rejected" || a.status === "completed";
+                const undecided = a.status === "pending" || a.status === "reviewed";
                 return (
                   <div key={a.id} className="bg-white border border-[#EAE6F5] rounded-xl p-5">
                     <div className="flex items-start gap-4">
@@ -213,7 +216,7 @@ export default function ApplicantsPage() {
 
                     {/* Aksi */}
                     <div className="flex items-center gap-2 mt-4 pl-16 flex-wrap">
-                      {!decided ? (
+                      {undecided ? (
                         <>
                           <button
                             onClick={() => handleUpdateStatus(a.id, "accepted")}
@@ -240,23 +243,41 @@ export default function ApplicantsPage() {
                           )}
                           {busy && <Loader2 className="w-4 h-4 animate-spin text-[#D64545]" />}
                         </>
+                      ) : a.status === "submitted_for_review" ? (
+                        <>
+                          <button
+                            onClick={() => setReviewTarget({
+                              applicationId: a.id,
+                              freelancerId: a.freelancer_id,
+                              name: a.name,
+                              jobId: a.job_id,
+                              jobTitle: a.job_title,
+                            })}
+                            className="flex items-center gap-1.5 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm font-semibold rounded-lg transition-colors"
+                          >
+                            <ClipboardCheck className="w-4 h-4" /> Setujui & Beri Ulasan
+                          </button>
+                          <Link
+                            href={`/employer/jobs/${a.job_id}/applicants`}
+                            className="text-xs text-[#146EB4] hover:underline font-semibold"
+                          >
+                            Tolak / Minta Revisi →
+                          </Link>
+                        </>
                       ) : a.status === "accepted" ? (
-                        <button
-                          onClick={() => setReviewTarget({
-                            applicationId: a.id,
-                            freelancerId: a.freelancer_id,
-                            name: a.name,
-                            jobId: a.job_id,
-                            jobTitle: a.job_title,
-                          })}
-                          className="flex items-center gap-1.5 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm font-semibold rounded-lg transition-colors"
-                        >
-                          <ClipboardCheck className="w-4 h-4" /> Tandai Selesai & Ulas
-                        </button>
+                        <p className="text-xs text-[#6B6880] italic">
+                          ✓ Diterima — menunggu freelancer menandai pekerjaan selesai
+                        </p>
+                      ) : a.status === "revision_requested" ? (
+                        <p className="text-xs text-orange-700 italic">
+                          ⏳ Menunggu freelancer mengirim ulang hasil revisi
+                        </p>
                       ) : a.status === "completed" ? (
                         <p className="text-xs text-purple-700 italic">
                           🏁 Pekerjaan selesai — ulasan sudah masuk ke profil freelancer
                         </p>
+                      ) : a.status === "terminated" ? (
+                        <p className="text-xs text-[#6B6880] italic">✕ Kerja sama diberhentikan</p>
                       ) : (
                         <p className="text-xs text-[#6B6880] italic">✕ Pelamar sudah ditolak</p>
                       )}

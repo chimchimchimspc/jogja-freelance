@@ -6,8 +6,9 @@ import Badge from "../../components/ui/Badge";
 import Button from "../../components/ui/Button";
 import Modal from "../../components/ui/Modal";
 import Toast from "../../components/ui/Toast";
-import { ArrowLeft, Clock, DollarSign, CheckCircle, XCircle, Eye, RotateCcw, Trash2, Loader2 } from "lucide-react";
+import { ArrowLeft, Clock, DollarSign, CheckCircle, XCircle, Eye, RotateCcw, Trash2, Loader2, Send, AlertCircle, Ban } from "lucide-react";
 import Link from "next/link";
+import { Textarea } from "../../components/ui/Input";
 import { jobsApi, type ApiApplication } from "../../lib/jobs.api";
 
 type FilterTab = "semua" | "pending" | "accepted" | "rejected";
@@ -17,12 +18,15 @@ const statusConfig: Record<ApiApplication["status"], {
   color: "blue" | "green" | "red" | "gray" | "orange";
   icon: typeof CheckCircle;
 }> = {
-  pending:   { label: "Menunggu",    color: "blue",   icon: Clock },
-  reviewed:  { label: "Ditinjau",   color: "orange",  icon: Eye },
-  accepted:  { label: "Diterima",   color: "green",   icon: CheckCircle },
-  completed: { label: "Selesai ✓",  color: "green",   icon: CheckCircle },
-  rejected:  { label: "Ditolak",    color: "red",     icon: XCircle },
-  expired:   { label: "Kedaluwarsa",color: "gray",    icon: RotateCcw },
+  pending:               { label: "Menunggu",         color: "blue",   icon: Clock },
+  reviewed:              { label: "Ditinjau",         color: "orange", icon: Eye },
+  accepted:              { label: "Diterima",         color: "green",  icon: CheckCircle },
+  submitted_for_review:  { label: "Menunggu Review",  color: "orange", icon: Send },
+  revision_requested:    { label: "Perlu Revisi",     color: "orange", icon: AlertCircle },
+  completed:             { label: "Selesai ✓",        color: "green",  icon: CheckCircle },
+  terminated:            { label: "Diberhentikan",    color: "red",    icon: Ban },
+  rejected:              { label: "Ditolak",          color: "red",    icon: XCircle },
+  expired:               { label: "Kedaluwarsa",      color: "gray",   icon: RotateCcw },
 };
 
 function formatBudget(amount: number) {
@@ -38,6 +42,9 @@ export default function ApplicationsPage() {
   const [loading, setLoading]         = useState(true);
   const [error, setError]             = useState<string | null>(null);
   const [toast, setToast]             = useState<string | null>(null);
+  const [submitWorkId, setSubmitWorkId] = useState<string | null>(null);
+  const [workNote, setWorkNote]       = useState("");
+  const [submittingWork, setSubmittingWork] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -52,19 +59,22 @@ export default function ApplicationsPage() {
     })();
   }, []);
 
+  const ACCEPTED_GROUP = ["accepted", "submitted_for_review", "revision_requested", "completed"];
+  const REJECTED_GROUP = ["rejected", "expired", "terminated"];
+
   const filtered = applications.filter((a) => {
     if (activeTab === "semua")    return true;
     if (activeTab === "pending")  return a.status === "pending" || a.status === "reviewed";
-    if (activeTab === "accepted") return a.status === "accepted" || a.status === "completed";
-    if (activeTab === "rejected") return a.status === "rejected" || a.status === "expired";
+    if (activeTab === "accepted") return ACCEPTED_GROUP.includes(a.status);
+    if (activeTab === "rejected") return REJECTED_GROUP.includes(a.status);
     return true;
   });
 
   const counts = {
     semua:    applications.length,
     pending:  applications.filter((a) => a.status === "pending" || a.status === "reviewed").length,
-    accepted: applications.filter((a) => a.status === "accepted" || a.status === "completed").length,
-    rejected: applications.filter((a) => a.status === "rejected" || a.status === "expired").length,
+    accepted: applications.filter((a) => ACCEPTED_GROUP.includes(a.status)).length,
+    rejected: applications.filter((a) => REJECTED_GROUP.includes(a.status)).length,
   };
 
   const handleWithdraw = async () => {
@@ -77,6 +87,22 @@ export default function ApplicationsPage() {
       setToast(e instanceof Error ? e.message : "Gagal menarik lamaran");
     } finally {
       setWithdrawId(null);
+    }
+  };
+
+  const handleSubmitWork = async () => {
+    if (!submitWorkId) return;
+    setSubmittingWork(true);
+    try {
+      const res = await jobsApi.submitWork(submitWorkId, workNote.trim() || undefined);
+      setApplications((prev) => prev.map((a) => (a.id === submitWorkId ? { ...a, ...res.data } : a)));
+      setToast("Pekerjaan ditandai selesai! Menunggu review employer.");
+      setSubmitWorkId(null);
+      setWorkNote("");
+    } catch (e: unknown) {
+      setToast(e instanceof Error ? e.message : "Gagal menandai pekerjaan selesai");
+    } finally {
+      setSubmittingWork(false);
     }
   };
 
@@ -167,8 +193,38 @@ export default function ApplicationsPage() {
                       <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-lg p-3 mb-3">
                         <CheckCircle className="w-4 h-4 text-[#12A54D] flex-shrink-0" />
                         <p className="text-sm text-green-800 font-medium">
-                          Selamat! Lamaran Anda diterima. Employer akan segera menghubungi Anda.
+                          Selamat! Lamaran Anda diterima. Kerjakan pekerjaannya, lalu tandai selesai di bawah.
                         </p>
+                      </div>
+                    )}
+                    {app.status === "submitted_for_review" && (
+                      <div className="flex items-center gap-2 bg-orange-50 border border-orange-200 rounded-lg p-3 mb-3">
+                        <Send className="w-4 h-4 text-orange-600 flex-shrink-0" />
+                        <p className="text-sm text-orange-800 font-medium">
+                          Pekerjaan sudah dikirim, menunggu review dari employer.
+                        </p>
+                      </div>
+                    )}
+                    {app.status === "revision_requested" && (
+                      <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 mb-3">
+                        <div className="flex items-center gap-2 mb-1">
+                          <AlertCircle className="w-4 h-4 text-orange-600 flex-shrink-0" />
+                          <p className="text-sm text-orange-800 font-medium">Employer meminta revisi:</p>
+                        </div>
+                        {app.employer_feedback && (
+                          <p className="text-sm text-orange-900 pl-6">{app.employer_feedback}</p>
+                        )}
+                      </div>
+                    )}
+                    {app.status === "terminated" && (
+                      <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-3">
+                        <div className="flex items-center gap-2 mb-1">
+                          <Ban className="w-4 h-4 text-[#DC2C1E] flex-shrink-0" />
+                          <p className="text-sm text-red-800 font-medium">Kerja sama diberhentikan employer.</p>
+                        </div>
+                        {app.employer_feedback && (
+                          <p className="text-sm text-red-900 pl-6">{app.employer_feedback}</p>
+                        )}
                       </div>
                     )}
                     {app.status === "rejected" && (
@@ -177,10 +233,28 @@ export default function ApplicationsPage() {
                         <p className="text-sm text-red-800">Lamaran tidak dilanjutkan. Jangan menyerah, terus apply!</p>
                       </div>
                     )}
+                    {app.status === "completed" && (
+                      <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-lg p-3 mb-3">
+                        <CheckCircle className="w-4 h-4 text-[#12A54D] flex-shrink-0" />
+                        <p className="text-sm text-green-800 font-medium">
+                          Pekerjaan disetujui employer. Terhitung sebagai proyek selesai 🎉
+                        </p>
+                      </div>
+                    )}
 
                     <p className="text-sm text-[#565A5C] bg-[#F1F1F1] rounded p-3 mb-3 line-clamp-2">
                       "{app.cover_letter}"
                     </p>
+
+                    {(app.status === "accepted" || app.status === "revision_requested") && (
+                      <button
+                        onClick={() => { setSubmitWorkId(app.id); setWorkNote(""); }}
+                        className="flex items-center gap-1.5 mb-3 px-4 py-2 bg-[#12A54D] hover:bg-[#0f8a40] text-white text-sm font-semibold rounded-lg transition-colors"
+                      >
+                        <Send className="w-4 h-4" />
+                        {app.status === "revision_requested" ? "Kirim Ulang Setelah Revisi" : "Tandai Pekerjaan Selesai"}
+                      </button>
+                    )}
 
                     <div className="flex flex-wrap items-center gap-4 text-xs text-[#565A5C]">
                       <span className="flex items-center gap-1">
@@ -222,6 +296,25 @@ export default function ApplicationsPage() {
         <p className="text-sm text-[#565A5C]">
           Apakah Anda yakin ingin menarik lamaran ini? Tindakan ini tidak bisa dibatalkan.
         </p>
+      </Modal>
+
+      <Modal isOpen={!!submitWorkId} onClose={() => setSubmitWorkId(null)} title="Tandai Pekerjaan Selesai" size="sm"
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setSubmitWorkId(null)} disabled={submittingWork}>Batal</Button>
+            <Button onClick={handleSubmitWork} loading={submittingWork}>Kirim ke Employer</Button>
+          </>
+        }
+      >
+        <p className="text-sm text-[#565A5C] mb-3">
+          Tambahkan catatan atau link hasil kerja (opsional), lalu kirim ke employer untuk direview.
+        </p>
+        <Textarea
+          value={workNote}
+          onChange={(e) => setWorkNote(e.target.value)}
+          placeholder="Contoh: link Google Drive, ringkasan hasil kerja, dsb."
+          rows={4}
+        />
       </Modal>
 
       {toast && <Toast message={toast} type="success" onClose={() => setToast(null)} />}

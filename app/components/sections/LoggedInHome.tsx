@@ -14,6 +14,7 @@ import { recommendationsApi } from "../../lib/recommendations.api";
 import { useAuth } from "../../context/AuthContext";
 import { assetUrl } from "../../lib/api";
 import FadeInSection from "../ui/FadeInSection";
+import AIChatCard from "../ai/AIChatCard";
 
 // Warna kategori lowongan — mengikuti mapping di halaman Lowongan (JobCard)
 const CATEGORY_STYLE: Record<string, { chip: string; avatar: string }> = {
@@ -457,6 +458,11 @@ export default function LoggedInHome() {
                   Lihat Semua Hari →
                 </Link>
               </div>
+            </FadeInSection>
+
+            {/* Asisten Karier AI */}
+            <FadeInSection delay={240}>
+              <AIChatCard />
             </FadeInSection>
 
             {/* Akses cepat — ikon warna-warni */}

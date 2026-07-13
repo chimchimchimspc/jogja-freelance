@@ -13,10 +13,13 @@ import { assetUrl } from "../../lib/api";
 import { useAuth } from "../../context/AuthContext";
 import EmployerEditForm from "../../components/profile/EmployerEditForm";
 
-const SKILL_OPTIONS = [
-  "Web Development", "UI/UX Design", "Content Writing",
-  "Video Editing", "Social Media", "Logo Design",
-  "Mobile Development", "Photography",
+// Fallback kalau fetch daftar skill dari server gagal.
+// Daftar utama diambil dari GET /profile/skills (tabel master skills),
+// supaya pilihan di sini dijamin cocok dengan yang dikenali backend.
+const SKILL_OPTIONS_FALLBACK = [
+  "React", "Next.js", "TypeScript", "Node.js", "Laravel", "Flutter",
+  "Figma", "UI Design", "UX Design", "Photoshop", "Illustrator",
+  "Copywriting", "SEO Writing", "Premiere Pro", "Instagram", "TikTok",
 ];
 
 export default function EditProfilePage() {
@@ -31,6 +34,7 @@ export default function EditProfilePage() {
     portfolioUrl: "",
     skills: [] as string[],
   });
+  const [skillOptions, setSkillOptions] = useState<string[]>(SKILL_OPTIONS_FALLBACK);
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | undefined>(undefined);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -53,7 +57,10 @@ export default function EditProfilePage() {
     }
     (async () => {
       try {
-        const res = await profileApi.getOwn();
+        const [res, skillsRes] = await Promise.all([
+          profileApi.getOwn(),
+          profileApi.getSkillOptions().catch(() => null),
+        ]);
         const p = res.data;
         setForm({
           fullName: p.full_name ?? "",
@@ -63,6 +70,12 @@ export default function EditProfilePage() {
           skills: p.skills ?? [],
         });
         setPreview(assetUrl(p.profile_picture_url));
+        if (skillsRes?.data?.length) {
+          // gabungkan dengan skill user yang mungkin belum ada di master
+          const names = skillsRes.data.map((s) => s.name);
+          const extra = (p.skills ?? []).filter((s) => !names.includes(s));
+          setSkillOptions([...names, ...extra]);
+        }
       } catch (e: unknown) {
         setToast({ message: e instanceof Error ? e.message : "Gagal memuat profil", type: "error" });
       } finally {
@@ -270,8 +283,8 @@ export default function EditProfilePage() {
 
               <div className="mb-6">
                 <label className="block text-sm font-semibold mb-2 text-[#232F3E]">Skill (1-5)</label>
-                <div className="grid grid-cols-2 gap-2">
-                  {SKILL_OPTIONS.map((skill) => (
+                <div className="grid grid-cols-2 gap-2 max-h-64 overflow-y-auto border border-[#E7E7E7] rounded-lg p-3">
+                  {skillOptions.map((skill) => (
                     <label key={skill} className="flex items-center gap-2 cursor-pointer">
                       <input
                         type="checkbox"
