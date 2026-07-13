@@ -1,6 +1,14 @@
 @import "tailwindcss";
 @import "leaflet/dist/leaflet.css";
 
+/* Leaflet memakai z-index internal tinggi (pane 400+, kontrol 1000) yang
+   menimpa modal/overlay lain. Kurung semuanya di stacking context sendiri
+   supaya peta tidak pernah tampil di atas modal, scanner QR, dsb. */
+.leaflet-container {
+  position: relative;
+  z-index: 0;
+}
+
 @theme inline {
   /* === SOFT RED → PINK GRADIENT === */
   --color-primary:       #D64545;   /* soft red */
