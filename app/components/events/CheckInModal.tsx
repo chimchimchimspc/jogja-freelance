@@ -1,12 +1,13 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import Modal from "../ui/Modal";
 import Button from "../ui/Button";
-import Toast from "../ui/Toast";
 import { Input } from "../ui/Input";
 import { type Event } from "../../data/events";
-import { QrCode, CheckCircle } from "lucide-react";
+import { ScanLine, CheckCircle, Loader2 } from "lucide-react";
 import { eventsApi } from "../../lib/events.api";
+import QRScanner from "./QRScanner";
 
 interface CheckInModalProps {
   event: Event | null;
@@ -16,19 +17,37 @@ interface CheckInModalProps {
   initialCode?: string;
 }
 
-export default function CheckInModal({ event, isOpen, onClose, onSuccess, initialCode = "" }: CheckInModalProps) {
-  const [code, setCode] = useState(initialCode);
+/**
+ * Ambil kode check-in dari hasil scan QR.
+ * QR pengelola berisi URL "/events/{id}?checkin=KODE", tapi terima juga
+ * QR yang berisi kode mentah.
+ */
+function parseScan(text: string): { code: string; eventId?: string } {
+  try {
+    const url = new URL(text);
+    const code = url.searchParams.get("checkin") ?? "";
+    const m = url.pathname.match(/\/events\/([0-9a-f-]{36})/i);
+    return { code: code.toUpperCase(), eventId: m?.[1] };
+  } catch {
+    return { code: text.trim().toUpperCase() };
+  }
+}
 
-  // Isi otomatis saat modal dibuka dari scan QR
-  useEffect(() => {
-    if (isOpen && initialCode) setCode(initialCode);
-  }, [isOpen, initialCode]);
+export default function CheckInModal({ event, isOpen, onClose, onSuccess, initialCode = "" }: CheckInModalProps) {
+  const router = useRouter();
+  const [code, setCode] = useState(initialCode);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [scanning, setScanning] = useState(false);
 
-  const handleCheckIn = async () => {
-    if (!code.trim()) {
+  // Isi otomatis saat modal dibuka dari scan QR / URL ?checkin=
+  useEffect(() => {
+    if (isOpen && initialCode) setCode(initialCode);
+  }, [isOpen, initialCode]);
+
+  const doCheckIn = useCallback(async (checkCode: string) => {
+    if (!checkCode.trim()) {
       setError("Masukkan kode check-in");
       return;
     }
@@ -37,11 +56,14 @@ export default function CheckInModal({ event, isOpen, onClose, onSuccess, initia
     setLoading(true);
     setError("");
     try {
-      await eventsApi.checkIn(event.id, code.toUpperCase());
+      await eventsApi.checkIn(event.id, checkCode.toUpperCase());
       setSuccess(true);
       setTimeout(() => {
         onSuccess();
-        handleClose();
+        setCode("");
+        setError("");
+        setSuccess(false);
+        onClose();
       }, 2000);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Check-in gagal. Coba lagi.";
@@ -53,18 +75,38 @@ export default function CheckInModal({ event, isOpen, onClose, onSuccess, initia
     } finally {
       setLoading(false);
     }
+  }, [event, onClose, onSuccess]);
+
+  const handleScanResult = (text: string) => {
+    setScanning(false);
+    const { code: scanned, eventId } = parseScan(text);
+
+    // QR milik event lain → pindah ke halaman event tersebut (auto check-in di sana)
+    if (eventId && event && eventId !== event.id) {
+      router.push(`/events/${eventId}?checkin=${encodeURIComponent(scanned)}`);
+      return;
+    }
+    if (!scanned) {
+      setError("QR tidak berisi kode check-in. Coba scan ulang.");
+      return;
+    }
+    setCode(scanned);
+    // langsung check-in tanpa perlu klik konfirmasi lagi
+    doCheckIn(scanned);
   };
 
   const handleClose = () => {
     setCode("");
     setError("");
     setSuccess(false);
+    setScanning(false);
     onClose();
   };
 
   if (!event) return null;
 
   return (
+    <>
     <Modal
       isOpen={isOpen}
       onClose={handleClose}
@@ -76,7 +118,7 @@ export default function CheckInModal({ event, isOpen, onClose, onSuccess, initia
             <Button variant="secondary" onClick={handleClose}>
               Batal
             </Button>
-            <Button onClick={handleCheckIn} loading={loading}>
+            <Button onClick={() => doCheckIn(code)} loading={loading}>
               Konfirmasi
             </Button>
           </>
@@ -103,28 +145,47 @@ export default function CheckInModal({ event, isOpen, onClose, onSuccess, initia
             <p className="text-xs text-[#565A5C]">{event.location}</p>
           </div>
 
-          <div className="bg-[#F1F1F1] border-2 border-dashed border-[#CCCCCC] rounded-lg p-6 text-center">
-            <QrCode className="w-10 h-10 mx-auto text-[#565A5C] mb-2" />
-            <p className="text-xs text-[#565A5C]">Scan QR code atau masukkan kode manual</p>
+          <button
+            type="button"
+            onClick={() => { setError(""); setScanning(true); }}
+            disabled={loading}
+            className="w-full bg-[#1E1B2E] hover:bg-[#2c2842] text-white rounded-lg p-5 text-center transition-colors disabled:opacity-60"
+          >
+            {loading ? (
+              <Loader2 className="w-8 h-8 mx-auto mb-2 animate-spin" />
+            ) : (
+              <ScanLine className="w-8 h-8 mx-auto mb-2 text-[#D64545]" />
+            )}
+            <p className="text-sm font-bold">Scan QR dari Pengelola</p>
+            <p className="text-[11px] text-white/60 mt-0.5">Pakai kamera HP atau webcam laptop</p>
+          </button>
+
+          <div className="flex items-center gap-3">
+            <div className="flex-1 h-px bg-[#E7E7E7]" />
+            <span className="text-[11px] text-[#565A5C]">atau isi manual</span>
+            <div className="flex-1 h-px bg-[#E7E7E7]" />
           </div>
 
           <Input
             label="Kode Check-in"
-            placeholder="Masukkan 10 digit kode"
+            placeholder="Contoh: A3K7ZP"
             value={code}
             onChange={(e) => {
               setCode(e.target.value.toUpperCase());
               if (error) setError("");
             }}
             error={error}
-            hint={`Kode ada di tiket atau tanyakan ke panitia`}
+            hint="Kode ada di layar pengelola atau tanyakan ke panitia"
           />
-
-          <p className="text-xs text-[#565A5C] text-center">
-            💡 Contoh kode: <code className="bg-[#F1F1F1] px-2 py-1 rounded text-[#232F3E]">{event.checkInCode}</code>
-          </p>
         </div>
       )}
     </Modal>
+
+    <QRScanner
+      isOpen={scanning}
+      onClose={() => setScanning(false)}
+      onResult={handleScanResult}
+    />
+    </>
   );
 }

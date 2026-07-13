@@ -235,7 +235,8 @@ export const MOCK_USER_ATTENDANCE: UserEventAttendance[] = [
 ];
 
 export function formatDate(dateStr: string): string {
-  const date = new Date(dateStr + "T00:00:00");
+  // Terima "YYYY-MM-DD" maupun ISO timestamp penuh dari API
+  const date = new Date(dateStr.split("T")[0] + "T00:00:00");
   return date.toLocaleDateString("id-ID", {
     weekday: "long",
     year: "numeric",

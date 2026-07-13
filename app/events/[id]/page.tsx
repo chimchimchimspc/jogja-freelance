@@ -45,7 +45,7 @@ function adaptEvent(e: ApiEvent): LocalEvent {
 export default function EventDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
 
   const [event, setEvent] = useState<LocalEvent | null>(null);
   const [organizer, setOrganizer] = useState<{ company?: string; logo?: string; industry?: string }>({});
@@ -91,11 +91,17 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
   }, [id, user]);
 
   // Datang dari scan QR pengelola (?checkin=KODE):
-  // auto-RSVP bila belum, lalu buka modal check-in dengan kode terisi
+  // auto-RSVP bila belum, lalu buka modal check-in dengan kode terisi.
+  // Kalau belum login, lempar ke halaman login dengan kode tetap terbawa
+  // di redirect supaya check-in lanjut otomatis setelah login.
   useEffect(() => {
-    if (loading || !event || !user || checkedIn) return;
+    if (loading || !event || checkedIn || authLoading) return;
     const code = new URLSearchParams(window.location.search).get("checkin");
     if (!code) return;
+    if (!user) {
+      router.push(`/auth/login?redirect=${encodeURIComponent(`/events/${id}?checkin=${code}`)}`);
+      return;
+    }
     setQrCode(code.toUpperCase());
     (async () => {
       if (!isAttending) {
@@ -109,7 +115,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
       setShowCheckIn(true);
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loading, event, user]);
+  }, [loading, event, user, authLoading]);
 
   const handleRsvp = async () => {
     if (!user) {
